@@ -29,3 +29,8 @@ SubPackages:
       Description: "%{summary}."
       Files:
           - "%{_libdir}/qt4/imports/org/nemomobile/thumbnailer/thumbnailers/libvideothumbnailer.so"
+      Provides:
+          - nemo-qml-plugins-gstvideo-thumbnailer > 0.3.16
+      Obsoletes:
+          - nemo-qml-plugins-gstvideo-thumbnailer > 0.3.16
+

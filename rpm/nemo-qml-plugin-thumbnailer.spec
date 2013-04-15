@@ -30,6 +30,8 @@ Obsoletes:   nemo-qml-plugins-thumbnailer <= 0.3.16
 Summary:    Video thumbnailer provider
 Group:      System/Libraries
 Requires:   %{name} = %{version}-%{release}
+Provides:   nemo-qml-plugins-gstvideo-thumbnailer > 0.3.16
+Obsoletes:   nemo-qml-plugins-gstvideo-thumbnailer > 0.3.16
 
 %description video
 %{summary}.
