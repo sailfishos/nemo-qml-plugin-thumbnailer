@@ -32,12 +32,17 @@
 #include <QFile>
 #include <QCryptographicHash>
 #include <QDebug>
-#include <QDesktopServices>
 #include <QDir>
 #include <QImageReader>
 #include <QDateTime>
 #include <QtEndian>
 #include <QElapsedTimer>
+
+#if QT_VERSION >= QT_VERSION_CHECK(5, 0, 0)
+# include <QStandardPaths>
+#else
+# include <QDesktopServices>
+#endif
 
 #undef THUMBNAILER_DEBUG
 
@@ -52,7 +57,11 @@
 
 static inline QString cachePath()
 {
+#if QT_VERSION >= QT_VERSION_CHECK(5, 0, 0)
+    return QStandardPaths::writableLocation(QStandardPaths::CacheLocation) + ".nemothumbs";
+#else
     return QDesktopServices::storageLocation(QDesktopServices::CacheLocation) + ".nemothumbs";
+#endif
 }
 
 static inline QString rawCachePath()
