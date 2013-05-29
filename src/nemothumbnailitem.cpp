@@ -35,86 +35,73 @@
 #include "nemothumbnailprovider.h"
 #include "nemovideothumbnailer.h"
 
+#include "linkedlist.h"
+
 #include <QCoreApplication>
-#include <QPainter>
-#include <QPixmapCache>
 
-struct ThumbnailRequest
+#if QT_VERSION < QT_VERSION_CHECK(5, 0, 0)
+# include <QPainter>
+#else
+
+#include <QSGGeometryNode>
+#include <QSGOpaqueTextureMaterial>
+#include <QQuickWindow>
+
+class ThumbnailNode : public QSGGeometryNode
 {
-    ThumbnailRequest(NemoThumbnailItem *item, const QString &fileName, const QByteArray &cacheKey);
-    ~ThumbnailRequest();
+public:
+    ThumbnailNode();
+    ~ThumbnailNode();
 
-    static void enqueue(ThumbnailRequest *&queue, ThumbnailRequest *request);
-    static ThumbnailRequest *dequeue(ThumbnailRequest *&queue);
-
-    ThumbnailRequest **previous;
-    ThumbnailRequest *next;
-    NemoThumbnailItem *item;
-    QByteArray cacheKey;
-    QString fileName;
-    QString mimeType;
-    QSize size;
-    QImage image;
-    NemoThumbnailItem::FillMode fillMode;
+    QSGGeometry geometry;
+    QSGOpaqueTextureMaterial material;
 };
 
-ThumbnailRequest::ThumbnailRequest(
-        NemoThumbnailItem *item, const QString &fileName, const QByteArray &cacheKey)
-    : previous(0)
-    , next(0)
-    , item(item)
-    , cacheKey(cacheKey)
+ThumbnailNode::ThumbnailNode()
+    : geometry(QSGGeometry::defaultAttributes_TexturedPoint2D(), 4)
+{
+    setGeometry(&geometry);
+    setMaterial(&material);
+}
+
+ThumbnailNode::~ThumbnailNode()
+{
+    delete material.texture();
+}
+
+#endif
+
+template <typename T, int N> static int lengthOf(const T(&)[N]) { return N; }
+
+ThumbnailRequest::ThumbnailRequest(NemoThumbnailItem *item, const QString &fileName, const QByteArray &cacheKey)
+    : cacheKey(cacheKey)
     , fileName(fileName)
     , mimeType(item->m_mimeType)
     , size(item->m_sourceSize)
     , fillMode(item->m_fillMode)
+    , status(NemoThumbnailItem::Loading)
+    , priority(NemoThumbnailItem::Unprioritized)
+    , loading(false)
+    , loaded(false)
 {
 }
 
 ThumbnailRequest::~ThumbnailRequest()
 {
-    if (next)
-        next->previous = previous;
-    if (previous)
-        *previous = next;
-}
-
-void ThumbnailRequest::enqueue(ThumbnailRequest *&queue, ThumbnailRequest *request)
-{
-    // Remove from previous list.
-    if (request->next)
-        request->next->previous = request->previous;
-    if (request->previous)
-        *request->previous = request->next;
-
-    request->next = queue;
-    if (request->next)
-        request->next->previous = &request->next;
-    request->previous = &queue;
-    queue = request;
-}
-
-ThumbnailRequest *ThumbnailRequest::dequeue(ThumbnailRequest *&queue)
-{
-    ThumbnailRequest *request = queue;
-    if (request) {
-        if (request->next)
-            request->next->previous = &queue;
-        queue = request->next;
-        request->previous = 0;
-        request->next = 0;
-    }
-    return request;
 }
 
 NemoThumbnailItem::NemoThumbnailItem(QDeclarativeItem *parent)
     : QDeclarativeItem(parent)
     , m_request(0)
     , m_priority(NormalPriority)
-    , m_status(Null)
     , m_fillMode(PreserveAspectCrop)
+    , m_imageChanged(false)
 {
+#if QT_VERSION >= QT_VERSION_CHECK(5, 0, 0)
+    setFlag(QQuickItem::ItemHasContents, true);
+#else
     setFlag(ItemHasNoContents, false);
+#endif
 }
 
 NemoThumbnailItem::~NemoThumbnailItem()
@@ -203,53 +190,85 @@ void NemoThumbnailItem::setFillMode(FillMode mode)
 
 NemoThumbnailItem::Status NemoThumbnailItem::status() const
 {
-    return m_status;
+    return m_request ? m_request->status : Null;
 }
+
+#if QT_VERSION >= QT_VERSION_CHECK(5, 0, 0)
+
+QSGNode *NemoThumbnailItem::updatePaintNode(QSGNode *oldNode, UpdatePaintNodeData *)
+{
+    ThumbnailNode *node = static_cast<ThumbnailNode *>(oldNode);
+    if (!m_request || m_request->pixmap.isNull()) {
+        if (node) {
+            delete node->material.texture();
+            delete node;
+        }
+        return 0;
+    }
+
+    if (!node)
+        node = new ThumbnailNode;
+
+
+    if (m_imageChanged || !node->material.texture()) {
+        m_imageChanged = false;
+        delete node->material.texture();
+        node->material.setTexture(window()->createTextureFromImage(m_request->pixmap));
+        node->markDirty(QSGNode::DirtyMaterial);
+    }
+
+    QSGGeometry::updateTexturedRectGeometry(
+                &node->geometry,
+                boundingRect(),
+                node->material.texture()->normalizedTextureSubRect());
+    node->markDirty(QSGNode::DirtyGeometry);
+
+    return node;
+}
+
+#else
 
 void NemoThumbnailItem::paint(QPainter *painter, const QStyleOptionGraphicsItem *, QWidget *)
 {
-    if (m_pixmap.isNull())
+    if (!m_request || m_request->pixmap.isNull())
         return;
 
-    painter->drawPixmap(QRect(0, 0, width(), height()), m_pixmap);
+    painter->drawPixmap(QRect(0, 0, width(), height()), m_request->pixmap);
 }
+
+#endif
 
 void NemoThumbnailItem::updateThumbnail(bool identityChanged)
 {
     if (!isComponentComplete())
         return;
 
+    Status status = m_request ? m_request->status : Null;
+
     if (m_source.isLocalFile() && !m_sourceSize.isEmpty())
         NemoThumbnailLoader::instance->updateRequest(this, identityChanged);
     else if (m_request)
         NemoThumbnailLoader::instance->cancelRequest(this);
 
-    if (m_request && m_status != Loading) {
-        m_status = Loading;
+    if (status != (m_request ? m_request->status : Null))
         emit statusChanged();
-    } else if (!m_request && !m_pixmap.isNull()) {
-        if (m_status != Ready) {
-            m_status = Ready;
-            emit statusChanged();
-        }
-        update();
-    } else if ((!m_source.isValid() || m_source.isEmpty()) && m_status != Null) {
-        m_status = Null;
-        emit statusChanged();
-    }
 }
 
 NemoThumbnailLoader *NemoThumbnailLoader::instance = 0;
 
+static int thumbnailerMaxCost()
+{
+    const QByteArray costEnv = qgetenv("NEMO_THUMBNAILER_CACHE_SIZE");
+
+    bool ok = false;
+    int cost = costEnv.toInt(&ok);
+    return ok ? cost : 1360 * 768 * 3;
+}
+
 NemoThumbnailLoader::NemoThumbnailLoader(QObject *parent)
     : QThread(parent)
-    , m_thumbnailHighPriority(0)
-    , m_thumbnailNormalPriority(0)
-    , m_thumbnailLowPriority(0)
-    , m_generateHighPriority(0)
-    , m_generateNormalPriority(0)
-    , m_generateLowPriority(0)
-    , m_completedRequests(0)
+    , m_totalCost(0)
+    , m_maxCost(thumbnailerMaxCost())
     , m_quit(false)
 {
     Q_ASSERT(!instance);
@@ -258,65 +277,109 @@ NemoThumbnailLoader::NemoThumbnailLoader(QObject *parent)
 
 NemoThumbnailLoader::~NemoThumbnailLoader()
 {
-    shutdown();
 }
 
 void NemoThumbnailLoader::updateRequest(NemoThumbnailItem *item, bool identityChanged)
 {
-    QString fileName;
-    QByteArray cacheKey;
+    ThumbnailRequest *previousRequest = item->m_request;
+    // If any property that forms part of the cacheKey has changed, create a new request or
+    // attach to an existing request for the same cacheKey.
     if (identityChanged) {
-        fileName = item->m_source.toLocalFile();
-        cacheKey = NemoThumbnailProvider::cacheKey(fileName, item->m_sourceSize);
+        item->listNode.erase();
+
+        const QString fileName = item->m_source.toLocalFile();
+        QByteArray cacheKey = NemoThumbnailProvider::cacheKey(fileName, item->m_sourceSize);
         if (item->m_fillMode == NemoThumbnailItem::PreserveAspectFit)
             cacheKey += 'F';
 
-        QPixmap pixmap;
-        if (QPixmapCache::find(cacheKey, &pixmap)) {
-            if (item->m_request)
-                cancelRequest(item);
-            item->m_pixmap = pixmap;
-            item->setImplicitWidth(pixmap.width());
-            item->setImplicitHeight(pixmap.height());
+        item->m_request = m_requestCache.value(cacheKey);
+
+        if (!item->m_request) {
+            item->m_request = new ThumbnailRequest(item, fileName, cacheKey);
+            m_requestCache.insert(cacheKey, item->m_request);
+        }
+        item->m_request->items.append(item);
+
+        // If an existing request is already completed, push it to the back of the cached requests
+        // lists to renew it and update the item.
+        if (item->m_request->status == NemoThumbnailItem::Ready) {
+            m_cachedRequests.append(item->m_request);
+
+            item->m_imageChanged = true;
+            item->setImplicitWidth(item->m_request->pixmap.width());
+            item->setImplicitHeight(item->m_request->pixmap.height());
+            emit item->statusChanged();
+            item->update();
             return;
+        }
+    }
+
+    // If the cache is full release excess unreferenced items.
+    ThumbnailRequestList::iterator it = m_cachedRequests.begin();
+    while (m_totalCost > m_maxCost && it != m_cachedRequests.end()) {
+        if (it->items.isEmpty()) {
+            ThumbnailRequest *cachedRequest = it;
+            it = m_cachedRequests.erase(it);
+            m_totalCost -= cachedRequest->pixmap.width() * cachedRequest->pixmap.height();
+            m_requestCache.remove(cachedRequest->cacheKey);
+            delete cachedRequest;
+        } else {
+            ++it;
         }
     }
 
     QMutexLocker locker(&m_mutex);
 
-    if (!item->m_request) {                     // There's no current request.
-        item->m_request = new ThumbnailRequest(item, fileName, cacheKey);
-    } else if (item->m_request->previous) {     // The current request is pending.
-        if (identityChanged) {
-            item->m_request->cacheKey = cacheKey;
-            item->m_request->fileName = fileName;
-            item->m_request->size = item->m_sourceSize;
-            item->m_request->fillMode = item->m_fillMode;
-        }
-        item->m_request->mimeType = item->m_mimeType;
-    } else {                                    // The current request is being processed. Replace it.
-        item->m_request->item = 0;
-        item->m_request = identityChanged
-                ? new ThumbnailRequest(item, fileName, cacheKey)
-                : new ThumbnailRequest(item, item->m_request->fileName, item->m_request->cacheKey);
-    }
+    // If the item's existing request was replaced, destroy or reprioritize if it is referenced
+    // by other items.
+    if (previousRequest != item->m_request && previousRequest)
+        prioritizeRequest(previousRequest);
 
-    ThumbnailRequest::enqueue(m_thumbnailRequests[item->m_priority], item->m_request);
+    prioritizeRequest(item->m_request);
 
     m_waitCondition.wakeOne();
 }
 
 void NemoThumbnailLoader::cancelRequest(NemoThumbnailItem *item)
 {
-    Q_ASSERT(item->m_request);
+    ThumbnailRequest *request = item->m_request;
+    Q_ASSERT(request);
 
-    QMutexLocker locker(&m_mutex);
-    // The only time a request doesn't belong to a list is while it is being processed.
-    if (item->m_request->previous)
-        delete item->m_request;
-    else
-        item->m_request->item = 0;
+    // Remove the item from the request list.
+    item->listNode.erase();
     item->m_request = 0;
+
+    // Destroy or reprioritize the request as appropriate.
+    QMutexLocker locker(&m_mutex);
+    prioritizeRequest(request);
+}
+
+void NemoThumbnailLoader::prioritizeRequest(ThumbnailRequest *request)
+{
+    if (request->loaded)
+        return;
+
+    ThumbnailRequestList *lists[] = {
+        &m_thumbnailHighPriority, &m_thumbnailNormalPriority, &m_thumbnailLowPriority
+    };
+
+    NemoThumbnailItem::Priority priority = NemoThumbnailItem::LowPriority;
+    for (ThumbnailItemList::iterator it = request->items.begin(); it !=  request->items.end(); ++it)
+        priority = qMin(priority, it->m_priority);
+
+    if (request->items.isEmpty()) {
+        // Cancel a pending request with no target items unless it's currently being loaded in
+        // which case let it complete as it will either just be cached or appended to the low
+        // priority generate queue.
+        if (!request->loading) {
+            m_requestCache.remove(request->cacheKey);
+            delete request;
+        }
+    } else if (request->priority != priority) {
+        request->priority = priority;
+        if (!request->loading)
+            lists[priority]->append(request);
+    }
 }
 
 void NemoThumbnailLoader::shutdown()
@@ -334,46 +397,69 @@ void NemoThumbnailLoader::shutdown()
 
     instance->wait();
 
-    for (int i = 0; i < NemoThumbnailItem::PriorityCount; ++i) {
-        while (instance->m_thumbnailRequests[i])
-            delete instance->m_thumbnailRequests[i];
-        while (instance->m_generateRequests[i])
-            delete instance->m_generateRequests[i];
+    ThumbnailRequestList *lists[] = {
+        &instance->m_thumbnailHighPriority,
+        &instance->m_thumbnailNormalPriority,
+        &instance->m_thumbnailLowPriority,
+        &instance->m_generateHighPriority,
+        &instance->m_generateNormalPriority,
+        &instance->m_generateLowPriority,
+        &instance->m_completedRequests,
+        &instance->m_cachedRequests
+    };
+
+    for (int i = 0; i < lengthOf(lists); ++i) {
+        while (ThumbnailRequest *request = lists[i]->takeFirst())
+            delete request;
     }
-    while (instance->m_completedRequests)
-        delete instance->m_completedRequests;
+
+    delete instance;
 }
 
 bool NemoThumbnailLoader::event(QEvent *event)
 {
     if (event->type() == QEvent::User) {
-        ThumbnailRequest *completedRequest;
+        // Move items from the completedRequests list to cachedRequests.
+        ThumbnailRequestList completedRequests;
         {
             QMutexLocker locker(&m_mutex);
-            completedRequest = m_completedRequests;
-            if (completedRequest)
-                completedRequest->previous = &completedRequest;
-            m_completedRequests = 0;
+            completedRequests = m_completedRequests;
         }
 
-        while (completedRequest) {
-            if (completedRequest->item) {
-                completedRequest->item->m_request = 0;
-                if (!completedRequest->image.isNull()) {
-                    completedRequest->item->m_pixmap = QPixmap::fromImage(completedRequest->image);
-                    QPixmapCache::insert(completedRequest->cacheKey, completedRequest->item->m_pixmap);
-                    completedRequest->item->m_status = NemoThumbnailItem::Ready;
-                    completedRequest->item->setImplicitWidth(completedRequest->item->m_pixmap.width());
-                    completedRequest->item->setImplicitHeight(completedRequest->item->m_pixmap.height());
-                    emit completedRequest->item->statusChanged();
-                } else {
-                    completedRequest->item->m_pixmap = QPixmap();
-                    completedRequest->item->m_status = NemoThumbnailItem::Error;
-                    emit completedRequest->item->statusChanged();
-                }
-                completedRequest->item->update();
+        while (ThumbnailRequest *request = completedRequests.takeFirst()) {
+            m_cachedRequests.append(request);
+
+            // Update any items associated with the request.
+            const QSize implicitSize = request->image.size();
+            if (!request->image.isNull()) {
+#if QT_VERSION >= QT_VERSION_CHECK(5, 0, 0)
+                request->pixmap = request->image;
+#else
+                request->pixmap = QPixmap::fromImage(request->image);
+#endif
+                request->image = QImage();
+                request->status = NemoThumbnailItem::Ready;
+
+                m_totalCost += implicitSize.width() * implicitSize.height();
+            } else {
+#if QT_VERSION >= QT_VERSION_CHECK(5, 0, 0)
+                request->pixmap = QImage();
+#else
+                request->pixmap = QPixmap();
+#endif
+                request->image = QImage();
+
+                request->status = NemoThumbnailItem::Error;
             }
-            delete completedRequest;
+            for (ThumbnailItemList::iterator item = request->items.begin();
+                    item != request->items.end();
+                    ++item) {
+                item->m_imageChanged = true;
+                item->setImplicitWidth(implicitSize.width());
+                item->setImplicitHeight(implicitSize.height());
+                emit item->statusChanged();
+                item->update();
+            }
         }
 
         return true;
@@ -390,25 +476,22 @@ void NemoThumbnailLoader::run()
 
     for (;;) {
         ThumbnailRequest *request = 0;
-        bool tryCache = true;
-        NemoThumbnailItem::Priority priority = NemoThumbnailItem::LowPriority;
+        bool tryCache;
 
         // Grab the next request in priority order.  High and normal priority thumbnails are
         // prioritized over generating any thumbnail, and low priority loading or generation
         // is deprioritized over everything else.
         if (m_quit) {
             return;
-        } else if ((request = ThumbnailRequest::dequeue(m_thumbnailHighPriority))) {
-            priority = NemoThumbnailItem::HighPriority;
-        } else if ((request = ThumbnailRequest::dequeue(m_thumbnailNormalPriority))) {
-            priority = NemoThumbnailItem::NormalPriority;
-        } else if ((request = ThumbnailRequest::dequeue(m_generateHighPriority))) {
+        } else if ((request = m_thumbnailHighPriority.takeFirst())
+                || (request = m_thumbnailNormalPriority.takeFirst())) {
+            tryCache = true;
+        } else if ((request = m_generateHighPriority.takeFirst())
+                || (request = m_generateNormalPriority.takeFirst())) {
             tryCache = false;
-        } else if ((request = ThumbnailRequest::dequeue(m_generateNormalPriority))) {
-            tryCache = false;
-        } else if ((request = ThumbnailRequest::dequeue(m_thumbnailLowPriority))) {
-            priority = NemoThumbnailItem::LowPriority;
-        } else if ((request = ThumbnailRequest::dequeue(m_generateLowPriority))) {
+        } else if ((request = m_thumbnailLowPriority.takeFirst())) {
+            tryCache = true;
+        } else if ((request = m_generateLowPriority.takeFirst())) {
             tryCache = false;
         } else {
             m_waitCondition.wait(&m_mutex);
@@ -422,23 +505,27 @@ void NemoThumbnailLoader::run()
         const QSize requestedSize = request->size;
         const bool crop = request->fillMode == NemoThumbnailItem::PreserveAspectCrop;
 
+        request->loading = true;
+
         locker.unlock();
 
         if (tryCache) {
             QImage image = NemoThumbnailProvider::loadThumbnail(fileName, cacheKey);
 
             locker.relock();
-            if (!request->item) {
-                // The request was cancelled while the thumbnail was loading, delete it now so
-                // so to not spend time generating a thumbnail that won't be used.
-                delete request;
-            } else if (!image.isNull()) {
+            request->loading = false;
+
+            if (!image.isNull()) {
+                request->loaded = true;
                 request->image = image;
-                if (!m_completedRequests)
+                if (m_completedRequests.isEmpty())
                     QCoreApplication::postEvent(this, new QEvent(QEvent::User));
-                ThumbnailRequest::enqueue(m_completedRequests, request);
+                m_completedRequests.append(request);
             } else {
-                ThumbnailRequest::enqueue(m_generateRequests[priority], request);
+                ThumbnailRequestList *lists[] = {
+                    &m_generateHighPriority, &m_generateNormalPriority, &m_generateLowPriority
+                };
+                lists[request->priority]->append(request);
             }
         } else {
             QImage image = !mimeType.startsWith(QLatin1String("video/"), Qt::CaseInsensitive)
@@ -446,10 +533,12 @@ void NemoThumbnailLoader::run()
                     : NemoVideoThumbnailer::generateThumbnail(fileName, cacheKey, requestedSize, crop);
 
             locker.relock();
+            request->loading = false;
+            request->loaded = true;
             request->image = image;
-            if (!m_completedRequests)
+            if (m_completedRequests.isEmpty())
                 QCoreApplication::postEvent(this, new QEvent(QEvent::User));
-            ThumbnailRequest::enqueue(m_completedRequests, request);
+            m_completedRequests.append(request);
         }
     }
 }

@@ -36,7 +36,18 @@
 #include <QtCore/qmutex.h>
 #include <QtCore/qthread.h>
 #include <QtCore/qwaitcondition.h>
-#include <QtDeclarative/qdeclarativeitem.h>
+
+
+#if QT_VERSION >= QT_VERSION_CHECK(5, 0, 0)
+# include <QQuickItem>
+# include <QSGTexture>
+# define QDeclarativeItem QQuickItem
+#else
+# include <QDeclarativeItem>
+#endif
+
+
+#include "linkedlist.h"
 
 struct ThumbnailRequest;
 
@@ -63,7 +74,8 @@ public:
     {
         HighPriority,
         NormalPriority,
-        LowPriority
+        LowPriority,
+        Unprioritized
     };
 
     enum
@@ -101,7 +113,13 @@ public:
 
     Status status() const;
 
+#if QT_VERSION >= QT_VERSION_CHECK(5, 0, 0)
+    QSGNode *updatePaintNode(QSGNode *oldNode, UpdatePaintNodeData *);
+#else
     void paint(QPainter *, const QStyleOptionGraphicsItem *, QWidget *);
+#endif
+
+    LinkedListNode listNode;
 
 Q_SIGNALS:
     void sourceChanged();
@@ -121,14 +139,41 @@ private:
     QUrl m_source;
     QString m_mimeType;
     QSize m_sourceSize;
-    QPixmap m_pixmap;
     Priority m_priority;
-    Status m_status;
     FillMode m_fillMode;
+    bool m_imageChanged;
 
     friend struct ThumbnailRequest;
     friend class NemoThumbnailLoader;
 };
+
+typedef LinkedList<NemoThumbnailItem, &NemoThumbnailItem::listNode> ThumbnailItemList;
+
+struct ThumbnailRequest
+{
+    ThumbnailRequest(NemoThumbnailItem *item, const QString &fileName, const QByteArray &cacheKey);
+    ~ThumbnailRequest();
+
+    LinkedListNode listNode;
+    ThumbnailItemList items;
+    QByteArray cacheKey;
+    QString fileName;
+    QString mimeType;
+    QSize size;
+    QImage image;
+#if QT_VERSION < QT_VERSION_CHECK(5, 0, 0)
+    QPixmap pixmap;
+#else
+    QImage pixmap;
+#endif
+    NemoThumbnailItem::FillMode fillMode;
+    NemoThumbnailItem::Status status;
+    NemoThumbnailItem::Priority priority;
+    bool loading;
+    bool loaded;
+};
+
+typedef LinkedList<ThumbnailRequest, &ThumbnailRequest::listNode> ThumbnailRequestList;
 
 class NemoThumbnailLoader : public QThread
 {
@@ -138,6 +183,7 @@ public:
 
     void updateRequest(NemoThumbnailItem *item, bool identityChanged);
     void cancelRequest(NemoThumbnailItem *item);
+    void prioritizeRequest(ThumbnailRequest *request);
 
     static void shutdown();
 
@@ -148,24 +194,20 @@ protected:
     void run();
 
 private:
-    union {
-        struct {
-            ThumbnailRequest *m_thumbnailRequests[NemoThumbnailItem::PriorityCount];
-            ThumbnailRequest *m_generateRequests[NemoThumbnailItem::PriorityCount];
-        };
-        struct {
-            ThumbnailRequest *m_thumbnailHighPriority;
-            ThumbnailRequest *m_thumbnailNormalPriority;
-            ThumbnailRequest *m_thumbnailLowPriority;
-            ThumbnailRequest *m_generateHighPriority;
-            ThumbnailRequest *m_generateNormalPriority;
-            ThumbnailRequest *m_generateLowPriority;
-        };
-    };
-    ThumbnailRequest *m_completedRequests;
+    ThumbnailRequestList m_thumbnailHighPriority;
+    ThumbnailRequestList m_thumbnailNormalPriority;
+    ThumbnailRequestList m_thumbnailLowPriority;
+    ThumbnailRequestList m_generateHighPriority;
+    ThumbnailRequestList m_generateNormalPriority;
+    ThumbnailRequestList m_generateLowPriority;
+    ThumbnailRequestList m_completedRequests;
+    ThumbnailRequestList m_cachedRequests;
+    QHash<QByteArray, ThumbnailRequest *> m_requestCache;
 
     QMutex m_mutex;
     QWaitCondition m_waitCondition;
+    int m_totalCost;
+    const int m_maxCost;
     bool m_quit;
 };
 
