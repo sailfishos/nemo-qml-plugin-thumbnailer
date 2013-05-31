@@ -199,10 +199,7 @@ QSGNode *NemoThumbnailItem::updatePaintNode(QSGNode *oldNode, UpdatePaintNodeDat
 {
     ThumbnailNode *node = static_cast<ThumbnailNode *>(oldNode);
     if (!m_request || m_request->pixmap.isNull()) {
-        if (node) {
-            delete node->material.texture();
-            delete node;
-        }
+        delete node;
         return 0;
     }
 
