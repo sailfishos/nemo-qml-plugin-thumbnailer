@@ -214,9 +214,15 @@ QSGNode *NemoThumbnailItem::updatePaintNode(QSGNode *oldNode, UpdatePaintNodeDat
         node->markDirty(QSGNode::DirtyMaterial);
     }
 
+    QRectF rect(QPointF(0, 0), m_request->pixmap.size().scaled(
+                width(),
+                height(),
+                m_fillMode == PreserveAspectFit ? Qt::KeepAspectRatio : Qt::KeepAspectRatioByExpanding));
+    rect.moveCenter(QPointF(width() / 2, height() / 2));
+
     QSGGeometry::updateTexturedRectGeometry(
                 &node->geometry,
-                boundingRect(),
+                rect,
                 node->material.texture()->normalizedTextureSubRect());
     node->markDirty(QSGNode::DirtyGeometry);
 
