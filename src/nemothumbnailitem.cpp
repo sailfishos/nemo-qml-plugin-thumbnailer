@@ -280,6 +280,7 @@ NemoThumbnailLoader::NemoThumbnailLoader(QObject *parent)
 
 NemoThumbnailLoader::~NemoThumbnailLoader()
 {
+    instance = 0;
 }
 
 void NemoThumbnailLoader::updateRequest(NemoThumbnailItem *item, bool identityChanged)
