@@ -44,7 +44,7 @@
 #else
 
 #include <QSGGeometryNode>
-#include <QSGOpaqueTextureMaterial>
+#include <QSGTextureMaterial>
 #include <QQuickWindow>
 
 class ThumbnailNode : public QSGGeometryNode
@@ -54,7 +54,7 @@ public:
     ~ThumbnailNode();
 
     QSGGeometry geometry;
-    QSGOpaqueTextureMaterial material;
+    QSGTextureMaterial material;
 };
 
 ThumbnailNode::ThumbnailNode()
