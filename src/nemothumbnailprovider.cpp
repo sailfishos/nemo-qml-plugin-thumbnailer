@@ -246,19 +246,19 @@ QImage NemoThumbnailProvider::generateThumbnail(const QString &id, const QByteAr
             // scales arbitrary sized source image to requested size scaling either up or down
             // keeping aspect ratio of the original image intact by maximizing either width or height
             // and cropping the rest of the image away
-            QSize scaledSize(requestedSize);
-            // now scale it filling the original rectangle by keeping aspect ratio
-            scaledSize.scale(originalSize, Qt::KeepAspectRatio);
+            QSize scaledSize(originalSize);
 
-            // set the adjusted clipping rectangle in the center of the original image
-            QRect clipRect(0, 0, scaledSize.width(), scaledSize.height());
-            QPoint originalCenterPoint(originalSize.width() / 2, originalSize.height() / 2);
-            clipRect.moveCenter(originalCenterPoint);
-            ir.setClipRect(clipRect);
+            // now scale it filling the original rectangle by keeping aspect ratio, but expand if needed.
+            scaledSize.scale(requestedSize, Qt::KeepAspectRatioByExpanding);
+
+            // set the adjusted clipping rectangle in the center of the scaled image
+            QPoint center(scaledSize.width() / 2, scaledSize.height() / 2);
+            QRect cr(0,0,requestedSize.width(), requestedSize.height());
+            cr.moveCenter(center);
+            ir.setScaledClipRect(cr);
 
             // set requested target size of a thumbnail
-            // as clipping rectangle is of same aspect ratio as requestedSize no distortion should happen
-            ir.setScaledSize(requestedSize);
+            ir.setScaledSize(scaledSize);
         } else {
             // Maintains correct aspect ratio without cropping, as such the final image may
             // be smaller than requested in one dimension.
