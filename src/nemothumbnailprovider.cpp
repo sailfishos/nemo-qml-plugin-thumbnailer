@@ -252,7 +252,7 @@ QImage NemoThumbnailProvider::generateThumbnail(const QString &id, const QByteAr
             scaledSize.scale(requestedSize, Qt::KeepAspectRatioByExpanding);
 
             // set the adjusted clipping rectangle in the center of the scaled image
-            QPoint center(scaledSize.width() / 2, scaledSize.height() / 2);
+            QPoint center((scaledSize.width() - 1) / 2, (scaledSize.height() - 1) / 2);
             QRect cr(0,0,requestedSize.width(), requestedSize.height());
             cr.moveCenter(center);
             ir.setScaledClipRect(cr);
