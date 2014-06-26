@@ -206,8 +206,10 @@ QImage NemoThumbnailProvider::requestImage(const QString &id, QSize *size, const
 
     // sourceSize should indicate what size thumbnail you want. i.e. if you want a 120x120px thumbnail,
     // set sourceSize: Qt.size(120, 120).
-    if (!requestedSize.isValid())
-        qFatal("You must request a sourceSize whenever you use nemoThumbnail");
+    if (!requestedSize.isValid()) {
+        qWarning("You must request a sourceSize whenever you use nemoThumbnail");
+        return QImage();
+    }
 
     if (size)
         *size = requestedSize;
