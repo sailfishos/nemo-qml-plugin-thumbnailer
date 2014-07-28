@@ -116,9 +116,7 @@ static QImage attemptCachedServe(const QString &id, const QByteArray &hashKey)
     if (info.exists() && info.lastModified() >= QFileInfo(id).lastModified()) {
         if (fi.open(QIODevice::ReadOnly)) {
             // cached file exists! hooray.
-            QImage img;
-            img.load(&fi, "JPG");
-            return img;
+            return QImage(fi.fileName());
         }
     }
 
@@ -132,7 +130,7 @@ void NemoThumbnailProvider::writeCacheFile(const QByteArray &hashKey, const QIma
         qWarning() << "Couldn't cache to " << fi.fileName();
         return;
     }
-    img.save(&fi, "JPG");
+    img.save(&fi, img.hasAlphaChannel() ? "PNG" : "JPG");
     fi.flush();
     fi.close();
 }
