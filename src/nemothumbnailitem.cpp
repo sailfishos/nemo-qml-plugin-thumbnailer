@@ -210,7 +210,7 @@ QSGNode *NemoThumbnailItem::updatePaintNode(QSGNode *oldNode, UpdatePaintNodeDat
     if (m_imageChanged || !node->material.texture()) {
         m_imageChanged = false;
         delete node->material.texture();
-        node->material.setTexture(window()->createTextureFromImage(m_request->pixmap));
+        node->material.setTexture(window()->createTextureFromImage(m_request->pixmap, QQuickWindow::TextureCanUseAtlas));
         node->markDirty(QSGNode::DirtyMaterial);
     }
 
