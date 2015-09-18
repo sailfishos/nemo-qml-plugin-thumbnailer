@@ -30,32 +30,22 @@
  */
 
 #include <QtGlobal>
-
-#if QT_VERSION >= QT_VERSION_CHECK(5, 0, 0)
-# include <QtQml>
-# include <QQmlEngine>
-# include <QQmlExtensionPlugin>
-# define QDeclarativeEngine QQmlEngine
-# define QDeclarativeExtensionPlugin QQmlExtensionPlugin
-#else
-# include <QtDeclarative>
-# include <QDeclarativeEngine>
-# include <QDeclarativeExtensionPlugin>
-#endif
+#include <QtQml>
+#include <QQmlEngine>
+#include <QQmlExtensionPlugin>
 
 #include "nemothumbnailitem.h"
 #include "nemothumbnailprovider.h"
 
-class Q_DECL_EXPORT NemoThumbnailerPlugin : public QDeclarativeExtensionPlugin
+class Q_DECL_EXPORT NemoThumbnailerPlugin : public QQmlExtensionPlugin
 {
     Q_OBJECT
-#if QT_VERSION >= QT_VERSION_CHECK(5, 0, 0)
     Q_PLUGIN_METADATA(IID "org.nemomobile.thumbnailer")
-#endif
+
 public:
     virtual ~NemoThumbnailerPlugin() { }
 
-    void initializeEngine(QDeclarativeEngine *engine, const char *uri)
+    void initializeEngine(QQmlEngine *engine, const char *uri)
     {
         Q_ASSERT(uri == QLatin1String("org.nemomobile.thumbnailer"));
         engine->addImageProvider(QLatin1String("nemoThumbnail"), new NemoThumbnailProvider);
@@ -73,12 +63,6 @@ public:
 
         qmlRegisterType<NemoThumbnailItem>(uri, 1, 0, "Thumbnail");
     }
-
-private:
 };
-
-#if QT_VERSION < QT_VERSION_CHECK(5, 0, 0)
-Q_EXPORT_PLUGIN2(nemothumbnailer, NemoThumbnailerPlugin);
-#endif
 
 #include "plugin.moc"

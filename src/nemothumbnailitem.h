@@ -36,22 +36,14 @@
 #include <QtCore/qmutex.h>
 #include <QtCore/qthread.h>
 #include <QtCore/qwaitcondition.h>
-
-
-#if QT_VERSION >= QT_VERSION_CHECK(5, 0, 0)
-# include <QQuickItem>
-# include <QSGTexture>
-# define QDeclarativeItem QQuickItem
-#else
-# include <QDeclarativeItem>
-#endif
-
+#include <QQuickItem>
+#include <QSGTexture>
 
 #include "linkedlist.h"
 
 struct ThumbnailRequest;
 
-class NemoThumbnailItem : public QDeclarativeItem
+class NemoThumbnailItem : public QQuickItem
 {
     Q_OBJECT
     Q_PROPERTY(QUrl source READ source WRITE setSource NOTIFY sourceChanged)
@@ -91,7 +83,7 @@ public:
         Error
     };
 
-    explicit NemoThumbnailItem(QDeclarativeItem *parent = 0);
+    explicit NemoThumbnailItem(QQuickItem *parent = 0);
     ~NemoThumbnailItem();
 
     void componentComplete();
@@ -113,11 +105,7 @@ public:
 
     Status status() const;
 
-#if QT_VERSION >= QT_VERSION_CHECK(5, 0, 0)
     QSGNode *updatePaintNode(QSGNode *oldNode, UpdatePaintNodeData *);
-#else
-    void paint(QPainter *, const QStyleOptionGraphicsItem *, QWidget *);
-#endif
 
     LinkedListNode listNode;
 
@@ -161,11 +149,7 @@ struct ThumbnailRequest
     QString mimeType;
     QSize size;
     QImage image;
-#if QT_VERSION < QT_VERSION_CHECK(5, 0, 0)
-    QPixmap pixmap;
-#else
     QImage pixmap;
-#endif
     NemoThumbnailItem::FillMode fillMode;
     NemoThumbnailItem::Status status;
     NemoThumbnailItem::Priority priority;

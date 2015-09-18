@@ -32,18 +32,13 @@
 #ifndef NEMOTHUMBNAILPROVIDER_H
 #define NEMOTHUMBNAILPROVIDER_H
 
-#if QT_VERSION >= QT_VERSION_CHECK(5, 0, 0)
-# include <QQuickImageProvider>
-# define QDeclarativeImageProvider QQuickImageProvider
-#else
-# include <QDeclarativeImageProvider>
-#endif
+#include <QQuickImageProvider>
 
-class NemoThumbnailProvider : public QDeclarativeImageProvider
+class NemoThumbnailProvider : public QQuickImageProvider
 {
 public:
     NemoThumbnailProvider()
-        : QDeclarativeImageProvider(QDeclarativeImageProvider::Image)
+        : QQuickImageProvider(QQuickImageProvider::Image)
     {
     }
 

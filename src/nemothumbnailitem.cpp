@@ -39,10 +39,6 @@
 
 #include <QCoreApplication>
 
-#if QT_VERSION < QT_VERSION_CHECK(5, 0, 0)
-# include <QPainter>
-#else
-
 #include <QSGGeometryNode>
 #include <QSGTextureMaterial>
 #include <QQuickWindow>
@@ -69,7 +65,6 @@ ThumbnailNode::~ThumbnailNode()
     delete material.texture();
 }
 
-#endif
 
 template <typename T, int N> static int lengthOf(const T(&)[N]) { return N; }
 
@@ -90,18 +85,14 @@ ThumbnailRequest::~ThumbnailRequest()
 {
 }
 
-NemoThumbnailItem::NemoThumbnailItem(QDeclarativeItem *parent)
-    : QDeclarativeItem(parent)
+NemoThumbnailItem::NemoThumbnailItem(QQuickItem *parent)
+    : QQuickItem(parent)
     , m_request(0)
     , m_priority(NormalPriority)
     , m_fillMode(PreserveAspectCrop)
     , m_imageChanged(false)
 {
-#if QT_VERSION >= QT_VERSION_CHECK(5, 0, 0)
     setFlag(QQuickItem::ItemHasContents, true);
-#else
-    setFlag(ItemHasNoContents, false);
-#endif
 }
 
 NemoThumbnailItem::~NemoThumbnailItem()
@@ -112,7 +103,7 @@ NemoThumbnailItem::~NemoThumbnailItem()
 
 void NemoThumbnailItem::componentComplete()
 {
-    QDeclarativeItem::componentComplete();
+    QQuickItem::componentComplete();
 
     updateThumbnail(true);
 }
@@ -193,8 +184,6 @@ NemoThumbnailItem::Status NemoThumbnailItem::status() const
     return m_request ? m_request->status : Null;
 }
 
-#if QT_VERSION >= QT_VERSION_CHECK(5, 0, 0)
-
 QSGNode *NemoThumbnailItem::updatePaintNode(QSGNode *oldNode, UpdatePaintNodeData *)
 {
     ThumbnailNode *node = static_cast<ThumbnailNode *>(oldNode);
@@ -228,18 +217,6 @@ QSGNode *NemoThumbnailItem::updatePaintNode(QSGNode *oldNode, UpdatePaintNodeDat
 
     return node;
 }
-
-#else
-
-void NemoThumbnailItem::paint(QPainter *painter, const QStyleOptionGraphicsItem *, QWidget *)
-{
-    if (!m_request || m_request->pixmap.isNull())
-        return;
-
-    painter->drawPixmap(QRect(0, 0, width(), height()), m_request->pixmap);
-}
-
-#endif
 
 void NemoThumbnailItem::updateThumbnail(bool identityChanged)
 {
@@ -436,21 +413,13 @@ bool NemoThumbnailLoader::event(QEvent *event)
             // Update any items associated with the request.
             const QSize implicitSize = request->image.size();
             if (!request->image.isNull()) {
-#if QT_VERSION >= QT_VERSION_CHECK(5, 0, 0)
                 request->pixmap = request->image;
-#else
-                request->pixmap = QPixmap::fromImage(request->image);
-#endif
                 request->image = QImage();
                 request->status = NemoThumbnailItem::Ready;
 
                 m_totalCost += implicitSize.width() * implicitSize.height();
             } else {
-#if QT_VERSION >= QT_VERSION_CHECK(5, 0, 0)
                 request->pixmap = QImage();
-#else
-                request->pixmap = QPixmap();
-#endif
                 request->image = QImage();
 
                 request->status = NemoThumbnailItem::Error;
