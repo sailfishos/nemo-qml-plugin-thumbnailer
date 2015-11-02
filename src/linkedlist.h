@@ -145,7 +145,7 @@ private:
 
         after->previous->next = after->next;
         node->next = after->next;
-        node->previous = &root;
+        node->previous = after;
         after->next = node;
     }
 

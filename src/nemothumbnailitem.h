@@ -43,6 +43,7 @@
 
 struct ThumbnailRequest;
 
+class NemoThumbnailLoader;
 class NemoThumbnailItem : public QQuickItem
 {
     Q_OBJECT
@@ -106,8 +107,12 @@ public:
     Status status() const;
 
     QSGNode *updatePaintNode(QSGNode *oldNode, UpdatePaintNodeData *);
+    void itemChange(ItemChange, const ItemChangeData &);
+
+    static NemoThumbnailLoader *qmlAttachedProperties(QObject *);
 
     LinkedListNode listNode;
+
 
 Q_SIGNALS:
     void sourceChanged();
@@ -122,7 +127,7 @@ private:
 
     void updateThumbnail(bool identityChanged);
 
-
+    NemoThumbnailLoader *m_loader;
     ThumbnailRequest *m_request;
     QUrl m_source;
     QString m_mimeType;
@@ -134,6 +139,9 @@ private:
     friend struct ThumbnailRequest;
     friend class NemoThumbnailLoader;
 };
+
+QML_DECLARE_TYPE(NemoThumbnailItem)
+QML_DECLARE_TYPEINFO(NemoThumbnailItem, QML_HAS_ATTACHED_PROPERTIES)
 
 typedef LinkedList<NemoThumbnailItem, &NemoThumbnailItem::listNode> ThumbnailItemList;
 
@@ -150,6 +158,7 @@ struct ThumbnailRequest
     QSize size;
     QImage image;
     QImage pixmap;
+    QSGTexture *texture;
     NemoThumbnailItem::FillMode fillMode;
     NemoThumbnailItem::Status status;
     NemoThumbnailItem::Priority priority;
@@ -161,8 +170,10 @@ typedef LinkedList<ThumbnailRequest, &ThumbnailRequest::listNode> ThumbnailReque
 
 class NemoThumbnailLoader : public QThread
 {
+    Q_OBJECT
+    Q_PROPERTY(int maxCost READ maxCost WRITE setMaxCost NOTIFY maxCostChanged)
 public:
-    explicit NemoThumbnailLoader(QObject *parent = 0);
+    explicit NemoThumbnailLoader(QQuickWindow *window);
     ~NemoThumbnailLoader();
 
     void updateRequest(NemoThumbnailItem *item, bool identityChanged);
@@ -171,13 +182,20 @@ public:
 
     static void shutdown();
 
-    static NemoThumbnailLoader *instance;
+    int maxCost() const;
+    void setMaxCost(int cost);
+
+signals:
+    void maxCostChanged();
 
 protected:
     bool event(QEvent *event);
     void run();
 
 private:
+    void restartLoader();
+    void destroyTextures();
+
     ThumbnailRequestList m_thumbnailHighPriority;
     ThumbnailRequestList m_thumbnailNormalPriority;
     ThumbnailRequestList m_thumbnailLowPriority;
@@ -190,9 +208,11 @@ private:
 
     QMutex m_mutex;
     QWaitCondition m_waitCondition;
+    QWindow *m_window;
     int m_totalCost;
-    const int m_maxCost;
+    int m_maxCost;
     bool m_quit;
+    bool m_suspend;
 };
 
 #endif
