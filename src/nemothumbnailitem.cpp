@@ -39,32 +39,8 @@
 
 #include <QCoreApplication>
 
-#include <QSGGeometryNode>
-#include <QSGTextureMaterial>
+#include <QSGSimpleTextureNode>
 #include <QQuickWindow>
-
-class ThumbnailNode : public QSGGeometryNode
-{
-public:
-    ThumbnailNode();
-    ~ThumbnailNode();
-
-    QSGGeometry geometry;
-    QSGTextureMaterial material;
-};
-
-ThumbnailNode::ThumbnailNode()
-    : geometry(QSGGeometry::defaultAttributes_TexturedPoint2D(), 4)
-{
-    setGeometry(&geometry);
-    setMaterial(&material);
-}
-
-ThumbnailNode::~ThumbnailNode()
-{
-    delete material.texture();
-}
-
 
 template <typename T, int N> static int lengthOf(const T(&)[N]) { return N; }
 
@@ -73,6 +49,7 @@ ThumbnailRequest::ThumbnailRequest(NemoThumbnailItem *item, const QString &fileN
     , fileName(fileName)
     , mimeType(item->m_mimeType)
     , size(item->m_sourceSize)
+    , texture(0)
     , fillMode(item->m_fillMode)
     , status(NemoThumbnailItem::Loading)
     , priority(NemoThumbnailItem::Unprioritized)
@@ -83,10 +60,14 @@ ThumbnailRequest::ThumbnailRequest(NemoThumbnailItem *item, const QString &fileN
 
 ThumbnailRequest::~ThumbnailRequest()
 {
+    if (texture) {
+        texture->deleteLater();
+    }
 }
 
 NemoThumbnailItem::NemoThumbnailItem(QQuickItem *parent)
     : QQuickItem(parent)
+    , m_loader(0)
     , m_request(0)
     , m_priority(NormalPriority)
     , m_fillMode(PreserveAspectCrop)
@@ -98,7 +79,7 @@ NemoThumbnailItem::NemoThumbnailItem(QQuickItem *parent)
 NemoThumbnailItem::~NemoThumbnailItem()
 {
     if (m_request)
-        NemoThumbnailLoader::instance->cancelRequest(this);
+        m_loader->cancelRequest(this);
 }
 
 void NemoThumbnailItem::componentComplete()
@@ -147,7 +128,7 @@ void NemoThumbnailItem::setPriority(Priority priority)
         m_priority = priority;
         emit priorityChanged();
         if (m_request)
-            NemoThumbnailLoader::instance->updateRequest(this, false);
+            m_loader->updateRequest(this, false);
     }
 }
 
@@ -186,55 +167,77 @@ NemoThumbnailItem::Status NemoThumbnailItem::status() const
 
 QSGNode *NemoThumbnailItem::updatePaintNode(QSGNode *oldNode, UpdatePaintNodeData *)
 {
-    ThumbnailNode *node = static_cast<ThumbnailNode *>(oldNode);
-    if (!m_request || m_request->pixmap.isNull()) {
+    QSGSimpleTextureNode *node = static_cast<QSGSimpleTextureNode *>(oldNode);
+    if (!m_request || (m_request->pixmap.isNull() && !m_request->texture)) {
         delete node;
         return 0;
     }
 
     if (!node)
-        node = new ThumbnailNode;
+        node = new QSGSimpleTextureNode;
 
-
-    if (m_imageChanged || !node->material.texture()) {
-        m_imageChanged = false;
-        delete node->material.texture();
-        node->material.setTexture(window()->createTextureFromImage(m_request->pixmap, QQuickWindow::TextureCanUseAtlas));
-        node->markDirty(QSGNode::DirtyMaterial);
+    if (!m_request->pixmap.isNull()) {
+        delete m_request->texture;
+        m_request->texture = window()->createTextureFromImage(m_request->pixmap, QQuickWindow::TextureCanUseAtlas);
+        m_request->pixmap = QImage();
     }
 
-    QRectF rect(QPointF(0, 0), m_request->pixmap.size().scaled(
+    if (m_imageChanged || !node->texture()) {
+        m_imageChanged = false;
+        node->setTexture(m_request->texture);
+    }
+
+    QRectF rect(QPointF(0, 0), m_request->texture->textureSize().scaled(
                 width(),
                 height(),
                 m_fillMode == PreserveAspectFit ? Qt::KeepAspectRatio : Qt::KeepAspectRatioByExpanding));
     rect.moveCenter(QPointF(width() / 2, height() / 2));
-
-    QSGGeometry::updateTexturedRectGeometry(
-                &node->geometry,
-                rect,
-                node->material.texture()->normalizedTextureSubRect());
-    node->markDirty(QSGNode::DirtyGeometry);
+    node->setRect(rect);
 
     return node;
 }
 
 void NemoThumbnailItem::updateThumbnail(bool identityChanged)
 {
-    if (!isComponentComplete())
+    if (!isComponentComplete() || !m_loader)
         return;
 
     Status status = m_request ? m_request->status : Null;
 
     if (m_source.isLocalFile() && !m_sourceSize.isEmpty())
-        NemoThumbnailLoader::instance->updateRequest(this, identityChanged);
+        m_loader->updateRequest(this, identityChanged);
     else if (m_request)
-        NemoThumbnailLoader::instance->cancelRequest(this);
+        m_loader->cancelRequest(this);
 
     if (status != (m_request ? m_request->status : Null))
         emit statusChanged();
 }
 
-NemoThumbnailLoader *NemoThumbnailLoader::instance = 0;
+void NemoThumbnailItem::itemChange(ItemChange change, const ItemChangeData &data)
+{
+    if (change == ItemSceneChange) {
+        if (m_request) {
+            m_loader->cancelRequest(this);
+            m_request = 0;
+        }
+
+        m_loader = data.window
+                ? qobject_cast<NemoThumbnailLoader *>(qmlAttachedPropertiesObject<NemoThumbnailItem>(data.window))
+                : 0;
+
+        updateThumbnail(true);
+    }
+    QQuickItem::itemChange(change, data);
+}
+
+NemoThumbnailLoader *NemoThumbnailItem::qmlAttachedProperties(QObject *object)
+{
+    if (QQuickWindow *window = qobject_cast<QQuickWindow *>(object)) {
+        return new NemoThumbnailLoader(window);
+    } else {
+        return 0;
+    }
+}
 
 static int thumbnailerMaxCost()
 {
@@ -245,19 +248,61 @@ static int thumbnailerMaxCost()
     return ok ? cost : 1360 * 768 * 3;
 }
 
-NemoThumbnailLoader::NemoThumbnailLoader(QObject *parent)
-    : QThread(parent)
+NemoThumbnailLoader::NemoThumbnailLoader(QQuickWindow *window)
+    : m_window(window)
     , m_totalCost(0)
     , m_maxCost(thumbnailerMaxCost())
     , m_quit(false)
+    , m_suspend(false)
 {
-    Q_ASSERT(!instance);
-    instance = this;
+    connect(window, &QQuickWindow::sceneGraphInitialized,
+                this, &NemoThumbnailLoader::restartLoader,
+                Qt::DirectConnection);
+    connect(window, &QQuickWindow::sceneGraphInvalidated,
+                this, &NemoThumbnailLoader::destroyTextures,
+                Qt::DirectConnection);
+    start();
 }
 
 NemoThumbnailLoader::~NemoThumbnailLoader()
 {
-    instance = 0;
+    {
+        QMutexLocker locker(&m_mutex);
+
+        m_quit = true;
+        m_waitCondition.wakeOne();
+    }
+
+    wait();
+
+    ThumbnailRequestList *lists[] = {
+        &m_thumbnailHighPriority,
+        &m_thumbnailNormalPriority,
+        &m_thumbnailLowPriority,
+        &m_generateHighPriority,
+        &m_generateNormalPriority,
+        &m_generateLowPriority,
+        &m_completedRequests,
+        &m_cachedRequests
+    };
+
+    for (int i = 0; i < lengthOf(lists); ++i) {
+        while (ThumbnailRequest *request = lists[i]->takeFirst())
+            delete request;
+    }
+}
+
+int NemoThumbnailLoader::maxCost() const
+{
+    return m_maxCost;
+}
+
+void NemoThumbnailLoader::setMaxCost(int cost)
+{
+    if (m_maxCost != cost) {
+        m_maxCost = cost;
+        emit maxCostChanged();
+    }
 }
 
 void NemoThumbnailLoader::updateRequest(NemoThumbnailItem *item, bool identityChanged)
@@ -363,40 +408,6 @@ void NemoThumbnailLoader::prioritizeRequest(ThumbnailRequest *request)
     }
 }
 
-void NemoThumbnailLoader::shutdown()
-{
-    if (!instance)
-        return;
-
-    {
-        QMutexLocker locker(&instance->m_mutex);
-
-        instance->m_quit = true;
-
-        instance->m_waitCondition.wakeOne();
-    }
-
-    instance->wait();
-
-    ThumbnailRequestList *lists[] = {
-        &instance->m_thumbnailHighPriority,
-        &instance->m_thumbnailNormalPriority,
-        &instance->m_thumbnailLowPriority,
-        &instance->m_generateHighPriority,
-        &instance->m_generateNormalPriority,
-        &instance->m_generateLowPriority,
-        &instance->m_completedRequests,
-        &instance->m_cachedRequests
-    };
-
-    for (int i = 0; i < lengthOf(lists); ++i) {
-        while (ThumbnailRequest *request = lists[i]->takeFirst())
-            delete request;
-    }
-
-    delete instance;
-}
-
 bool NemoThumbnailLoader::event(QEvent *event)
 {
     if (event->type() == QEvent::User) {
@@ -437,7 +448,7 @@ bool NemoThumbnailLoader::event(QEvent *event)
 
         return true;
     } else {
-        return NemoThumbnailLoader::event(event);
+        return QThread::event(event);
     }
 }
 
@@ -456,6 +467,9 @@ void NemoThumbnailLoader::run()
         // is deprioritized over everything else.
         if (m_quit) {
             return;
+        } else if (m_suspend) {
+            m_waitCondition.wait(&m_mutex);
+            continue;
         } else if ((request = m_thumbnailHighPriority.takeFirst())
                 || (request = m_thumbnailNormalPriority.takeFirst())) {
             tryCache = true;
@@ -513,5 +527,70 @@ void NemoThumbnailLoader::run()
                 QCoreApplication::postEvent(this, new QEvent(QEvent::User));
             m_completedRequests.append(request);
         }
+    }
+}
+
+void NemoThumbnailLoader::restartLoader()
+{
+    {
+        QMutexLocker locker(&m_mutex);
+        m_suspend = false;
+        m_waitCondition.wakeOne();
+    }
+}
+
+void NemoThumbnailLoader::destroyTextures()
+{
+    QList<QSGTexture *> textures;
+    QList<NemoThumbnailItem *> invalidatedItems;
+
+    {
+        QMutexLocker locker(&m_mutex);
+
+        m_suspend = true;
+
+        ThumbnailRequestList *lists[] = {
+            &m_thumbnailHighPriority,
+            &m_thumbnailNormalPriority,
+            &m_thumbnailLowPriority,
+            &m_generateHighPriority,
+            &m_generateNormalPriority,
+            &m_generateLowPriority,
+            &m_completedRequests
+        };
+
+        for (int i = 0; i < lengthOf(lists); ++i) {
+            for (ThumbnailRequestList::iterator request = lists[i]->begin();
+                        request != lists[i]->end();
+                        ++request) {
+                if (request->texture) {
+                    textures.append(request->texture);
+                    request->texture = 0;
+                }
+            }
+        }
+
+        ThumbnailRequestList cachedRequests = m_cachedRequests;
+        while (ThumbnailRequest *request = cachedRequests.takeFirst()) {
+            if (request->texture) {
+                for (ThumbnailItemList::iterator item = request->items.begin();
+                            item != request->items.end();
+                            ++item) {
+                    invalidatedItems.append(item);
+                }
+                textures.append(request->texture);
+                request->texture = 0;
+                request->loaded = false;
+                request->status = NemoThumbnailItem::Loading;
+                lists[request->priority]->append(request);
+            } else {
+                m_cachedRequests.append(request);
+            }
+        }
+    }
+
+    qDeleteAll(textures);
+    foreach (NemoThumbnailItem *item, invalidatedItems) {
+        emit item->statusChanged();
     }
 }

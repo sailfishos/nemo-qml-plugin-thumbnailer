@@ -49,12 +49,6 @@ public:
     {
         Q_ASSERT(uri == QLatin1String("org.nemomobile.thumbnailer"));
         engine->addImageProvider(QLatin1String("nemoThumbnail"), new NemoThumbnailProvider);
-
-        if (!NemoThumbnailLoader::instance) {
-            NemoThumbnailLoader *loader = new NemoThumbnailLoader;
-            loader->start(QThread::IdlePriority);
-            qAddPostRoutine(NemoThumbnailLoader::shutdown);
-        }
     }
 
     void registerTypes(const char *uri)
