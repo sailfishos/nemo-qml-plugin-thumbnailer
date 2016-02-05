@@ -93,19 +93,21 @@ public:
     };
 
     LinkedList() {}
-    LinkedList(LinkedList &list) : root(list.root) {
-        list.root.next = list.root.previous = &list.root;
-        root.next->previous = &root;
-        root.previous->next = &root;
+    LinkedList(LinkedList &list) {
+        *this = list;
     }
     LinkedList &operator =(LinkedList &list) {
-        root = list.root;
-        list.root.next = list.root.previous = &list.root;
-        root.next->previous = &root;
-        root.previous->next = &root;
+        root.erase();
+        if (!list.isEmpty()) {
+            root = list.root;
+            list.root.next = &list.root;
+            list.root.previous = &list.root;
+            root.next->previous = &root;
+            root.previous->next = &root;
+        }
         return *this;
     }
-    ~LinkedList() {}
+    ~LinkedList() { root.erase(); }
 
     bool isEmpty() const { return root.next == &root; }
 
