@@ -311,6 +311,7 @@ void NemoThumbnailLoader::updateRequest(NemoThumbnailItem *item, bool identityCh
     // If any property that forms part of the cacheKey has changed, create a new request or
     // attach to an existing request for the same cacheKey.
     if (identityChanged) {
+        const bool wasReady = item->m_request && item->m_request->status == NemoThumbnailItem::Ready;
         item->listNode.erase();
 
         const QString fileName = item->m_source.toLocalFile();
@@ -337,6 +338,8 @@ void NemoThumbnailLoader::updateRequest(NemoThumbnailItem *item, bool identityCh
             emit item->statusChanged();
             item->update();
             return;
+        } else if (wasReady) {
+            item->update();
         }
     }
 
@@ -370,6 +373,9 @@ void NemoThumbnailLoader::cancelRequest(NemoThumbnailItem *item)
 {
     ThumbnailRequest *request = item->m_request;
     Q_ASSERT(request);
+
+    if (request->status == NemoThumbnailItem::Ready)
+        item->update();
 
     // Remove the item from the request list.
     item->listNode.erase();
