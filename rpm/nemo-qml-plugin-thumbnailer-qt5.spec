@@ -45,6 +45,7 @@ rm -rf %{buildroot}
 %defattr(-,root,root,-)
 %{_libdir}/qt5/qml/org/nemomobile/thumbnailer/libnemothumbnailer.so
 %{_libdir}/qt5/qml/org/nemomobile/thumbnailer/qmldir
+%{_libdir}/qt5/qml/org/nemomobile/thumbnailer/plugins.qmltypes
 
 %files video
 %defattr(-,root,root,-)

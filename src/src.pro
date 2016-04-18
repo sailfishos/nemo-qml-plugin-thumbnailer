@@ -14,6 +14,10 @@ qmldir.files += $$_PRO_FILE_PWD_/qmldir
 qmldir.path +=  $$target.path
 INSTALLS += qmldir
 
+qmltypes.files += $$_PRO_FILE_PWD_/plugins.qmltypes
+qmltypes.path +=  $$target.path
+INSTALLS += qmltypes
+
 SOURCES += plugin.cpp \
            nemothumbnailprovider.cpp \
            nemoimagemetadata.cpp \
