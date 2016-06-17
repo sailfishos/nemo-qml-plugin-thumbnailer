@@ -32,8 +32,7 @@
 
 #include "nemothumbnailitem.h"
 
-#include "nemothumbnailprovider.h"
-#include "nemovideothumbnailer.h"
+#include "nemothumbnailcache.h"
 
 #include "linkedlist.h"
 
@@ -315,9 +314,8 @@ void NemoThumbnailLoader::updateRequest(NemoThumbnailItem *item, bool identityCh
         item->listNode.erase();
 
         const QString fileName = item->m_source.toLocalFile();
-        QByteArray cacheKey = NemoThumbnailProvider::cacheKey(fileName, item->m_sourceSize);
-        if (item->m_fillMode == NemoThumbnailItem::PreserveAspectFit)
-            cacheKey += 'F';
+        const bool crop = item->m_fillMode == NemoThumbnailItem::PreserveAspectCrop;
+        const QByteArray cacheKey = NemoThumbnailCache::instance()->requestId(fileName, item->m_sourceSize, crop);
 
         item->m_request = m_requestCache.value(cacheKey);
 
@@ -460,8 +458,6 @@ bool NemoThumbnailLoader::event(QEvent *event)
 
 void NemoThumbnailLoader::run()
 {
-    NemoThumbnailProvider::setupCache();
-
     QMutexLocker locker(&m_mutex);
 
     for (;;) {
@@ -492,7 +488,6 @@ void NemoThumbnailLoader::run()
         }
 
         Q_ASSERT(request);
-        const QByteArray cacheKey = request->cacheKey;
         const QString fileName = request->fileName;
         const QString mimeType = request->mimeType;
         const QSize requestedSize = request->size;
@@ -503,7 +498,11 @@ void NemoThumbnailLoader::run()
         locker.unlock();
 
         if (tryCache) {
-            QImage image = NemoThumbnailProvider::loadThumbnail(fileName, cacheKey);
+            QImage image;
+            QString thumbnailPath = NemoThumbnailCache::instance()->existingThumbnail(fileName, requestedSize, crop);
+            if (!thumbnailPath.isEmpty()) {
+                image.load(thumbnailPath);
+            }
 
             locker.relock();
             request->loading = false;
@@ -521,14 +520,16 @@ void NemoThumbnailLoader::run()
                 lists[request->priority]->append(request);
             }
         } else {
-            QImage image = !mimeType.startsWith(QLatin1String("video/"), Qt::CaseInsensitive)
-                    ? NemoThumbnailProvider::generateThumbnail(fileName, cacheKey, requestedSize, crop)
-                    : NemoVideoThumbnailer::generateThumbnail(fileName, cacheKey, requestedSize, crop);
+            NemoThumbnailCache::ThumbnailData thumbnail = NemoThumbnailCache::instance()->requestThumbnail(fileName, requestedSize, crop, mimeType);
 
             locker.relock();
             request->loading = false;
             request->loaded = true;
-            request->image = image;
+            if (thumbnail.validImage()) {
+                request->image = thumbnail.image();
+            } else if (thumbnail.validPath()) {
+                request->image = QImage(thumbnail.path());
+            }
             if (m_completedRequests.isEmpty())
                 QCoreApplication::postEvent(this, new QEvent(QEvent::User));
             m_completedRequests.append(request);

@@ -1,6 +1,5 @@
 /*
- * Copyright (C) 2012 Jolla Ltd
- * Contact: Andrew den Exter <andrew.den.exter@jollamobile.com>
+ * Copyright (C) 2012 Robin Burchell <robin+nemo@viroteck.net>
  *
  * You may use this file under the terms of the BSD license as follows:
  *
@@ -30,14 +29,39 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE."
  */
 
-#ifndef NEMOVIDEOTHUMBNAILER_H
-#define NEMOVIDEOTHUMBNAILER_H
+#ifndef NEMOTHUMBNAILCACHE_H
+#define NEMOTHUMBNAILCACHE_H
 
 #include <QImage>
+#include <QSize>
+#include <QString>
 
-namespace NemoVideoThumbnailer
+class NemoThumbnailCache
 {
-    QImage generateThumbnail(const QString &fileName, const QByteArray &cacheKey, const QSize &requestedSize, bool crop);
-}
+public:
+    class ThumbnailData
+    {
+    public:
+        ThumbnailData(const QString &path, const QImage &image);
 
-#endif
+        bool validPath() const;
+        QString path() const;
+
+        bool validImage() const;
+        QImage image() const;
+
+    private:
+        QString path_;
+        QImage image_;
+    };
+
+    static NemoThumbnailCache *instance();
+
+    QByteArray requestId(const QString &path, const QSize &requestedSize, bool crop) const;
+
+    ThumbnailData requestThumbnail(const QString &path, const QSize &requestedSize, bool crop, const QString &mimeType = QString());
+
+    QString existingThumbnail(const QString &path, const QSize &requestedSize, bool crop) const;
+};
+
+#endif // NEMOTHUMBNAILCACHE_H
