@@ -36,7 +36,7 @@
 #include <QSize>
 #include <QString>
 
-class NemoThumbnailCache
+class Q_DECL_EXPORT NemoThumbnailCache
 {
 public:
     class ThumbnailData

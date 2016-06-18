@@ -44,8 +44,6 @@
 #include <QElapsedTimer>
 #include <QStandardPaths>
 
-#undef THUMBNAILER_DEBUG
-
 #ifdef THUMBNAILER_DEBUG
 #define TDEBUG qDebug
 #else

@@ -14,6 +14,23 @@ BuildRequires:  pkgconfig(Qt5Quick)
 %description
 %{summary}.
 
+%package video
+Summary:    Video thumbnailer provider
+Group:      System/Libraries
+Requires:   %{name} = %{version}-%{release}
+
+%description video
+%{summary}.
+
+%package devel
+Summary:    Thumbnail support for C++ applications
+Group:      System/Libraries
+Requires:   %{name} = %{version}-%{release}
+
+%description devel
+%{summary}.
+
+
 %prep
 %setup -q -n %{name}-%{version}
 
@@ -29,7 +46,19 @@ rm -rf %{buildroot}
 
 %files
 %defattr(-,root,root,-)
+%{_libdir}/libnemothumbnailer-qt5.so.*
 %{_libdir}/qt5/qml/org/nemomobile/thumbnailer/libnemothumbnailer.so
 %{_libdir}/qt5/qml/org/nemomobile/thumbnailer/qmldir
 %{_libdir}/qt5/qml/org/nemomobile/thumbnailer/plugins.qmltypes
+
+%files video
+%defattr(-,root,root,-)
+%{_libdir}/qt5/qml/org/nemomobile/thumbnailer/thumbnailers/libvideothumbnailer.so
+
+%files devel
+%defattr(-,root,root,-)
+%{_libdir}/libnemothumbnailer-qt5.so
+%{_libdir}/libnemothumbnailer-qt5.prl
+%{_includedir}/nemothumbnailer-qt5/*.h
+%{_libdir}/pkgconfig/nemothumbnailer-qt5.pc
 

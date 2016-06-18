@@ -41,7 +41,26 @@
 #include <QSGSimpleTextureNode>
 #include <QQuickWindow>
 
-template <typename T, int N> static int lengthOf(const T(&)[N]) { return N; }
+#ifdef THUMBNAILER_DEBUG
+#define TDEBUG qDebug
+#else
+#define TDEBUG if(false)qDebug
+#endif
+
+namespace {
+
+template <typename T, int N> int lengthOf(const T(&)[N]) { return N; }
+
+int thumbnailerMaxCost()
+{
+    const QByteArray costEnv = qgetenv("NEMO_THUMBNAILER_CACHE_SIZE");
+
+    bool ok = false;
+    int cost = costEnv.toInt(&ok);
+    return ok ? cost : 1360 * 768 * 3;
+}
+
+}
 
 ThumbnailRequest::ThumbnailRequest(NemoThumbnailItem *item, const QString &fileName, const QByteArray &cacheKey)
     : cacheKey(cacheKey)
@@ -238,14 +257,6 @@ NemoThumbnailLoader *NemoThumbnailItem::qmlAttachedProperties(QObject *object)
     }
 }
 
-static int thumbnailerMaxCost()
-{
-    const QByteArray costEnv = qgetenv("NEMO_THUMBNAILER_CACHE_SIZE");
-
-    bool ok = false;
-    int cost = costEnv.toInt(&ok);
-    return ok ? cost : 1360 * 768 * 3;
-}
 
 NemoThumbnailLoader::NemoThumbnailLoader(QQuickWindow *window)
     : m_window(window)

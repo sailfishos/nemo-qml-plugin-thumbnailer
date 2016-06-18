@@ -37,7 +37,7 @@ class QByteArray;
 
 #include <QMetaType>
 
-class NemoImageMetadata
+class Q_DECL_EXPORT NemoImageMetadata
 {
 public:
 
