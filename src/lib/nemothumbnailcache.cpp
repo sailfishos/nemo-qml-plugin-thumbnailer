@@ -52,14 +52,40 @@
 
 namespace {
 
-inline QString cachePath()
+bool acceptableSize(const QSize &requestedSize, bool crop, unsigned size)
 {
-    return QStandardPaths::writableLocation(QStandardPaths::GenericCacheLocation) + "/.nemothumbs";
+    const bool sufficientWidth(size >= (unsigned)requestedSize.width());
+    const bool sufficientHeight(size >= (unsigned)requestedSize.height());
+    return crop ? (sufficientWidth && sufficientHeight) : (sufficientWidth || sufficientHeight);
 }
 
-inline QString rawCachePath()
+unsigned selectSize(const QSize &requestedSize, bool crop)
 {
-    return cachePath() + QDir::separator() + "raw";
+    // Prefer a thumbnail size at least as large as the requested size
+    return acceptableSize(requestedSize, crop, NemoThumbnailCache::Small)
+               ? NemoThumbnailCache::Small
+               : (acceptableSize(requestedSize, crop, NemoThumbnailCache::Medium)
+                    ? NemoThumbnailCache::Medium
+                    : (acceptableSize(requestedSize, crop, NemoThumbnailCache::Large)
+                         ? NemoThumbnailCache::Large
+                         : NemoThumbnailCache::None));
+}
+
+unsigned increaseSize(unsigned size)
+{
+    return size == NemoThumbnailCache::Small ? NemoThumbnailCache::Medium
+                                             : (size == NemoThumbnailCache::Medium ? NemoThumbnailCache::Large
+                                                                                   : NemoThumbnailCache::None);
+}
+
+inline QString cachePath()
+{
+    return QStandardPaths::writableLocation(QStandardPaths::GenericCacheLocation) + QDir::separator() + "org.nemomobile";
+}
+
+inline QString thumbnailsCachePath()
+{
+    return cachePath() + QDir::separator() + "thumbnails";
 }
 
 void setupCache()
@@ -67,41 +93,36 @@ void setupCache()
     QDir d(cachePath());
     if (!d.exists())
         d.mkpath(cachePath());
-    d.mkdir("raw");
+    d.mkdir("thumbnails");
 }
 
-QString cacheFileName(const QByteArray &hashKey, bool makePath = false)
+QString cachePath(const QByteArray &key, bool makePath = false)
 {
-    QString subfolder = QString(hashKey.left(2));
+    QString subfolder = QString(key.left(2));
     if (makePath) {
-        QDir d(rawCachePath());
+        QDir d(thumbnailsCachePath());
         d.mkdir(subfolder);
     }
 
-    return rawCachePath() +
+    return thumbnailsCachePath() +
            QDir::separator() +
            subfolder +
            QDir::separator() +
-           hashKey;
+           key;
 }
 
-QByteArray cacheKey(const QString &id, const QSize &requestedSize, bool crop)
+QByteArray cacheKey(const QString &id, unsigned size, bool crop)
 {
     const QByteArray baId = id.toUtf8(); // is there a more efficient way than a copy?
 
-    // check if we have it in cache
     QCryptographicHash hash(QCryptographicHash::Sha1);
-
     hash.addData(baId.constData(), baId.length());
-    return hash.result().toHex() + "nemo" +
-           QString::number(requestedSize.width()).toLatin1() + "x" +
-           QString::number(requestedSize.height()).toLatin1() +
-           (crop ? "" : "F");
+    return hash.result().toHex() + "-" + QString::number(size).toLatin1() + (crop ? "" : "F");
 }
 
-QString attemptCachedServe(const QString &id, const QByteArray &hashKey)
+QString attemptCachedServe(const QString &id, const QByteArray &key)
 {
-    QFile fi(cacheFileName(hashKey));
+    QFile fi(cachePath(key));
     QFileInfo info(fi);
     if (info.exists() && info.lastModified() >= QFileInfo(id).lastModified()) {
         if (fi.open(QIODevice::ReadOnly)) {
@@ -113,9 +134,9 @@ QString attemptCachedServe(const QString &id, const QByteArray &hashKey)
     return QString();
 }
 
-QString writeCacheFile(const QByteArray &hashKey, const QImage &img)
+QString writeCacheFile(const QByteArray &key, const QImage &img)
 {
-    const QString thumbnailPath(cacheFileName(hashKey, true));
+    const QString thumbnailPath(cachePath(key, true));
     QFile thumbnailFile(thumbnailPath);
     if (!thumbnailFile.open(QIODevice::WriteOnly)) {
         qWarning() << "Couldn't cache to " << thumbnailFile.fileName();
@@ -189,11 +210,8 @@ QString imagePath(const QString &uri)
     return path;
 }
 
-NemoThumbnailCache::ThumbnailData generateImageThumbnail(const QString &path, const QByteArray &hashData, const QSize &requestedSize, bool crop)
+NemoThumbnailCache::ThumbnailData generateImageThumbnail(const QString &path, const QByteArray &key, const QSize &requestedSize, bool crop)
 {
-    QString thumbnailPath;
-    QImage img;
-
     // image was not in cache thus we read it
     QImageReader ir(path);
     if (ir.canRead()) {
@@ -226,65 +244,80 @@ NemoThumbnailCache::ThumbnailData generateImageThumbnail(const QString &path, co
                 ir.setScaledSize(scaledSize);
             }
         }
-        img = ir.read();
+
+        QImage img(ir.read());
 
         NemoImageMetadata meta(path, format);
         if (meta.orientation() != NemoImageMetadata::TopLeft)
             img = rotate(img, meta.orientation());
 
         // write the scaled image to cache
+        QString thumbnailPath;
         if (meta.orientation() != NemoImageMetadata::TopLeft ||
             (originalSize != requestedSize && originalSize.isValid())) {
-            thumbnailPath = writeCacheFile(hashData, img);
+            thumbnailPath = writeCacheFile(key, img);
             TDEBUG() << Q_FUNC_INFO << "Wrote " << path << " to cache";
         } else {
-            // Return the original file path
+            // The thumbnail is the same as int input; return the original file path
             thumbnailPath = path;
         }
+
+        return NemoThumbnailCache::ThumbnailData(thumbnailPath, img, requestedSize.width());
     }
 
-    return NemoThumbnailCache::ThumbnailData(thumbnailPath, img);
+    TDEBUG() << Q_FUNC_INFO << "Could not generateImageThumbnail:" << path << requestedSize << crop;
+    return NemoThumbnailCache::ThumbnailData();
 }
 
 typedef QImage (*CreateThumbnailFunc)(const QString &path, const QSize &requestedSize, bool crop);
 
-NemoThumbnailCache::ThumbnailData generateVideoThumbnail(const QString &path, const QByteArray &hashData, const QSize &requestedSize, bool crop)
+NemoThumbnailCache::ThumbnailData generateVideoThumbnail(const QString &path, const QByteArray &key, const QSize &requestedSize, bool crop)
 {
     static CreateThumbnailFunc createVideoThumbnail = (CreateThumbnailFunc)QLibrary::resolve(
                 QLatin1String(NEMO_THUMBNAILER_DIR "/libvideothumbnailer.so"), "createThumbnail");
 
-    QString thumbnailPath;
-    QImage img;
     if (createVideoThumbnail) {
-        img = createVideoThumbnail(path, requestedSize, crop);
+        QImage img(createVideoThumbnail(path, requestedSize, crop));
         if (!img.isNull()) {
-            thumbnailPath = writeCacheFile(hashData, img);
+            const QString thumbnailPath(writeCacheFile(key, img));
             TDEBUG() << Q_FUNC_INFO << "Wrote " << path << " to cache";
+            return NemoThumbnailCache::ThumbnailData(thumbnailPath, img, requestedSize.width());
+        } else {
+            TDEBUG() << Q_FUNC_INFO << "Could not createVideoThumbnail:" << path << requestedSize << crop;
         }
     } else {
         qWarning("Cannot generate video thumbnail, thumbnailer function not available.");
     }
 
-    return NemoThumbnailCache::ThumbnailData(thumbnailPath, img);
+    return NemoThumbnailCache::ThumbnailData();
 }
 
-NemoThumbnailCache::ThumbnailData generateThumbnail(const QString &path, const QByteArray &hashData, const QSize &requestedSize, bool crop, const QString &mimeType)
+NemoThumbnailCache::ThumbnailData generateThumbnail(const QString &path, const QByteArray &key, unsigned size, bool crop, const QString &mimeType)
 {
+    const QSize boundsSize(size, size);
+
     if (mimeType.startsWith("video/")) {
-        return generateVideoThumbnail(path, hashData, requestedSize, crop);
+        return generateVideoThumbnail(path, key, boundsSize, crop);
     }
 
     // Assume image data
-    return generateImageThumbnail(path, hashData, requestedSize, crop);
+    return generateImageThumbnail(path, key, boundsSize, crop);
 }
 
 thread_local NemoThumbnailCache *cacheInstance = 0;
 
 }
 
-NemoThumbnailCache::ThumbnailData::ThumbnailData(const QString &path, const QImage &image)
+
+NemoThumbnailCache::ThumbnailData::ThumbnailData()
+    : size_(NemoThumbnailCache::None)
+{
+}
+
+NemoThumbnailCache::ThumbnailData::ThumbnailData(const QString &path, const QImage &image, unsigned size)
     : path_(path)
     , image_(image)
+    , size_(size)
 {
 }
 
@@ -308,6 +341,32 @@ QImage NemoThumbnailCache::ThumbnailData::image() const
     return image_;
 }
 
+unsigned NemoThumbnailCache::ThumbnailData::size() const
+{
+    return size_;
+}
+
+QImage NemoThumbnailCache::ThumbnailData::getScaledImage(const QSize &requestedSize, Qt::TransformationMode mode) const
+{
+    QImage rv;
+
+    if (!image_.isNull()) {
+        rv = image_.scaled(requestedSize.width(), requestedSize.height(), Qt::KeepAspectRatio, mode);
+    } else if (!path_.isEmpty()) {
+        QImageReader ir(path_);
+        if (ir.canRead()) {
+            QSize scaledSize(ir.size());
+            if (scaledSize != requestedSize) {
+                scaledSize.scale(requestedSize, Qt::KeepAspectRatio);
+                ir.setScaledSize(scaledSize);
+            }
+            rv = ir.read();
+        }
+    }
+
+    return rv;
+}
+
 
 NemoThumbnailCache *NemoThumbnailCache::instance()
 {
@@ -318,41 +377,41 @@ NemoThumbnailCache *NemoThumbnailCache::instance()
     return cacheInstance;
 }
 
-QByteArray NemoThumbnailCache::requestId(const QString &uri, const QSize &requestedSize, bool crop) const
-{
-    const QString path(imagePath(uri));
-    return cacheKey(path, requestedSize, crop);
-}
-
 NemoThumbnailCache::ThumbnailData NemoThumbnailCache::requestThumbnail(const QString &uri, const QSize &requestedSize, bool crop, const QString &mimeType)
 {
     const QString path(imagePath(uri));
     if (!path.isEmpty()) {
-        const QByteArray hashData = cacheKey(path, requestedSize, crop);
-        QString thumbnailPath = attemptCachedServe(path, hashData);
-        if (!thumbnailPath.isEmpty()) {
-            TDEBUG() << Q_FUNC_INFO << "Read " << path << " from cache";
-            return ThumbnailData(thumbnailPath, QImage());
+        ThumbnailData existing(existingThumbnail(uri, requestedSize, crop));
+        if (existing.validPath()) {
+            return existing;
         }
 
-        return generateThumbnail(path, hashData, requestedSize, crop, mimeType);
+        const unsigned size(selectSize(requestedSize, crop));
+        if (size != None) {
+            const QByteArray key = cacheKey(path, size, crop);
+            return generateThumbnail(path, key, size, crop, mimeType);
+        } else {
+            TDEBUG() << Q_FUNC_INFO << "Invalid thumbnail size " << requestedSize << " for " << path;
+        }
     }
 
-    return ThumbnailData(QString(), QImage());
+    return ThumbnailData();
 }
 
-QString NemoThumbnailCache::existingThumbnail(const QString &uri, const QSize &requestedSize, bool crop) const
+NemoThumbnailCache::ThumbnailData NemoThumbnailCache::existingThumbnail(const QString &uri, const QSize &requestedSize, bool crop) const
 {
     const QString path(imagePath(uri));
     if (!path.isEmpty()) {
-        const QByteArray hashData = cacheKey(path, requestedSize, crop);
-        QString thumbnailPath = attemptCachedServe(path, hashData);
-        if (!thumbnailPath.isEmpty()) {
-            TDEBUG() << Q_FUNC_INFO << "Read " << path << " from cache";
-            return thumbnailPath;
+        for (unsigned size(selectSize(requestedSize, crop)); size != None; size = increaseSize(size)) {
+            const QByteArray key = cacheKey(path, size, crop);
+            QString thumbnailPath = attemptCachedServe(path, key);
+            if (!thumbnailPath.isEmpty()) {
+                TDEBUG() << Q_FUNC_INFO << "Read " << path << " from cache";
+                return ThumbnailData(thumbnailPath, QImage(), size);
+            }
         }
     }
 
-    return QString();
+    return ThumbnailData();
 }
 

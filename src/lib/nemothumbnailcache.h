@@ -39,10 +39,18 @@
 class Q_DECL_EXPORT NemoThumbnailCache
 {
 public:
+    enum {
+        None = 0,
+        Small = 128,
+        Medium = 256,
+        Large = 512,
+    };
+
     class ThumbnailData
     {
     public:
-        ThumbnailData(const QString &path, const QImage &image);
+        ThumbnailData();
+        ThumbnailData(const QString &path, const QImage &image, unsigned size);
 
         bool validPath() const;
         QString path() const;
@@ -50,18 +58,21 @@ public:
         bool validImage() const;
         QImage image() const;
 
+        unsigned size() const;
+
+        QImage getScaledImage(const QSize &requestedSize, Qt::TransformationMode mode = Qt::FastTransformation) const;
+
     private:
         QString path_;
         QImage image_;
+        unsigned size_;
     };
 
     static NemoThumbnailCache *instance();
 
-    QByteArray requestId(const QString &path, const QSize &requestedSize, bool crop) const;
-
     ThumbnailData requestThumbnail(const QString &path, const QSize &requestedSize, bool crop, const QString &mimeType = QString());
 
-    QString existingThumbnail(const QString &path, const QSize &requestedSize, bool crop) const;
+    ThumbnailData existingThumbnail(const QString &path, const QSize &requestedSize, bool crop) const;
 };
 
 #endif // NEMOTHUMBNAILCACHE_H

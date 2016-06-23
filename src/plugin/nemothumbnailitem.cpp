@@ -62,7 +62,7 @@ int thumbnailerMaxCost()
 
 }
 
-ThumbnailRequest::ThumbnailRequest(NemoThumbnailItem *item, const QString &fileName, const QByteArray &cacheKey)
+ThumbnailRequest::ThumbnailRequest(NemoThumbnailItem *item, const QString &fileName, uint cacheKey)
     : cacheKey(cacheKey)
     , fileName(fileName)
     , mimeType(item->m_mimeType)
@@ -326,7 +326,9 @@ void NemoThumbnailLoader::updateRequest(NemoThumbnailItem *item, bool identityCh
 
         const QString fileName = item->m_source.toLocalFile();
         const bool crop = item->m_fillMode == NemoThumbnailItem::PreserveAspectCrop;
-        const QByteArray cacheKey = NemoThumbnailCache::instance()->requestId(fileName, item->m_sourceSize, crop);
+
+        // Create an identifier for this request's data
+        const uint cacheKey = qHash(crop) ^ qHash(item->m_sourceSize.width()) ^ qHash(item->m_sourceSize.height()) ^ qHash(fileName);
 
         item->m_request = m_requestCache.value(cacheKey);
 
@@ -509,11 +511,8 @@ void NemoThumbnailLoader::run()
         locker.unlock();
 
         if (tryCache) {
-            QImage image;
-            QString thumbnailPath = NemoThumbnailCache::instance()->existingThumbnail(fileName, requestedSize, crop);
-            if (!thumbnailPath.isEmpty()) {
-                image.load(thumbnailPath);
-            }
+            NemoThumbnailCache::ThumbnailData thumbnail = NemoThumbnailCache::instance()->existingThumbnail(fileName, requestedSize, crop);
+            QImage image = thumbnail.getScaledImage(requestedSize);
 
             locker.relock();
             request->loading = false;
@@ -532,15 +531,12 @@ void NemoThumbnailLoader::run()
             }
         } else {
             NemoThumbnailCache::ThumbnailData thumbnail = NemoThumbnailCache::instance()->requestThumbnail(fileName, requestedSize, crop, mimeType);
+            QImage image = thumbnail.getScaledImage(requestedSize);
 
             locker.relock();
             request->loading = false;
             request->loaded = true;
-            if (thumbnail.validImage()) {
-                request->image = thumbnail.image();
-            } else if (thumbnail.validPath()) {
-                request->image = QImage(thumbnail.path());
-            }
+            request->image = image;
             if (m_completedRequests.isEmpty())
                 QCoreApplication::postEvent(this, new QEvent(QEvent::User));
             m_completedRequests.append(request);

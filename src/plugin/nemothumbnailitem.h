@@ -147,12 +147,12 @@ typedef LinkedList<NemoThumbnailItem, &NemoThumbnailItem::listNode> ThumbnailIte
 
 struct ThumbnailRequest
 {
-    ThumbnailRequest(NemoThumbnailItem *item, const QString &fileName, const QByteArray &cacheKey);
+    ThumbnailRequest(NemoThumbnailItem *item, const QString &fileName, uint cacheKey);
     ~ThumbnailRequest();
 
     LinkedListNode listNode;
     ThumbnailItemList items;
-    QByteArray cacheKey;
+    uint cacheKey;
     QString fileName;
     QString mimeType;
     QSize size;
@@ -204,7 +204,7 @@ private:
     ThumbnailRequestList m_generateLowPriority;
     ThumbnailRequestList m_completedRequests;
     ThumbnailRequestList m_cachedRequests;
-    QHash<QByteArray, ThumbnailRequest *> m_requestCache;
+    QHash<uint, ThumbnailRequest *> m_requestCache;
 
     QMutex m_mutex;
     QWaitCondition m_waitCondition;
