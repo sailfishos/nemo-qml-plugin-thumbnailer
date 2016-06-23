@@ -52,23 +52,47 @@
 
 namespace {
 
-bool acceptableSize(const QSize &requestedSize, bool crop, unsigned size)
+bool acceptableUnboundedSize(const QSize &requestedSize, bool crop, unsigned size)
 {
     const bool sufficientWidth(size >= (unsigned)requestedSize.width());
     const bool sufficientHeight(size >= (unsigned)requestedSize.height());
     return crop ? (sufficientWidth && sufficientHeight) : (sufficientWidth || sufficientHeight);
 }
 
-unsigned selectSize(const QSize &requestedSize, bool crop)
+unsigned selectUnboundedSize(const QSize &requestedSize, bool crop)
 {
     // Prefer a thumbnail size at least as large as the requested size
-    return acceptableSize(requestedSize, crop, NemoThumbnailCache::Small)
+    return acceptableUnboundedSize(requestedSize, crop, NemoThumbnailCache::Small)
                ? NemoThumbnailCache::Small
-               : (acceptableSize(requestedSize, crop, NemoThumbnailCache::Medium)
+               : (acceptableUnboundedSize(requestedSize, crop, NemoThumbnailCache::Medium)
                     ? NemoThumbnailCache::Medium
-                    : (acceptableSize(requestedSize, crop, NemoThumbnailCache::Large)
+                    : (acceptableUnboundedSize(requestedSize, crop, NemoThumbnailCache::Large)
                          ? NemoThumbnailCache::Large
                          : NemoThumbnailCache::None));
+}
+
+bool acceptableBoundedSize(const QSize &requestedSize, unsigned size)
+{
+    const bool manageableWidth(size <= (unsigned)requestedSize.width());
+    const bool manageableHeight(size <= (unsigned)requestedSize.height());
+    return manageableWidth && manageableHeight;
+}
+
+unsigned selectBoundedSize(const QSize &requestedSize)
+{
+    // Select a size that does not exceed the requested size
+    return acceptableBoundedSize(requestedSize, NemoThumbnailCache::Large)
+               ? NemoThumbnailCache::Large
+               : (acceptableBoundedSize(requestedSize, NemoThumbnailCache::Medium)
+                    ? NemoThumbnailCache::Medium
+                    : (acceptableBoundedSize(requestedSize, NemoThumbnailCache::Small)
+                         ? NemoThumbnailCache::Small
+                         : NemoThumbnailCache::None));
+}
+
+unsigned selectSize(const QSize &requestedSize, bool crop, bool unbounded)
+{
+    return unbounded ? selectUnboundedSize(requestedSize, crop) : selectBoundedSize(requestedSize);
 }
 
 unsigned increaseSize(unsigned size)
@@ -76,6 +100,18 @@ unsigned increaseSize(unsigned size)
     return size == NemoThumbnailCache::Small ? NemoThumbnailCache::Medium
                                              : (size == NemoThumbnailCache::Medium ? NemoThumbnailCache::Large
                                                                                    : NemoThumbnailCache::None);
+}
+
+unsigned decreaseSize(unsigned size)
+{
+    return size == NemoThumbnailCache::Large ? NemoThumbnailCache::Medium
+                                             : (size == NemoThumbnailCache::Medium ? NemoThumbnailCache::Small
+                                                                                   : NemoThumbnailCache::None);
+}
+
+unsigned nextSize(unsigned size, bool unbounded)
+{
+    return unbounded ? increaseSize(size) : decreaseSize(size);
 }
 
 inline QString cachePath()
@@ -377,16 +413,16 @@ NemoThumbnailCache *NemoThumbnailCache::instance()
     return cacheInstance;
 }
 
-NemoThumbnailCache::ThumbnailData NemoThumbnailCache::requestThumbnail(const QString &uri, const QSize &requestedSize, bool crop, const QString &mimeType)
+NemoThumbnailCache::ThumbnailData NemoThumbnailCache::requestThumbnail(const QString &uri, const QSize &requestedSize, bool crop, bool unbounded, const QString &mimeType)
 {
     const QString path(imagePath(uri));
     if (!path.isEmpty()) {
-        ThumbnailData existing(existingThumbnail(uri, requestedSize, crop));
+        ThumbnailData existing(existingThumbnail(uri, requestedSize, crop, unbounded));
         if (existing.validPath()) {
             return existing;
         }
 
-        const unsigned size(selectSize(requestedSize, crop));
+        const unsigned size(selectSize(requestedSize, crop, unbounded));
         if (size != None) {
             const QByteArray key = cacheKey(path, size, crop);
             return generateThumbnail(path, key, size, crop, mimeType);
@@ -398,11 +434,11 @@ NemoThumbnailCache::ThumbnailData NemoThumbnailCache::requestThumbnail(const QSt
     return ThumbnailData();
 }
 
-NemoThumbnailCache::ThumbnailData NemoThumbnailCache::existingThumbnail(const QString &uri, const QSize &requestedSize, bool crop) const
+NemoThumbnailCache::ThumbnailData NemoThumbnailCache::existingThumbnail(const QString &uri, const QSize &requestedSize, bool crop, bool unbounded) const
 {
     const QString path(imagePath(uri));
     if (!path.isEmpty()) {
-        for (unsigned size(selectSize(requestedSize, crop)); size != None; size = increaseSize(size)) {
+        for (unsigned size(selectSize(requestedSize, crop, unbounded)); size != None; size = nextSize(size, unbounded)) {
             const QByteArray key = cacheKey(path, size, crop);
             QString thumbnailPath = attemptCachedServe(path, key);
             if (!thumbnailPath.isEmpty()) {

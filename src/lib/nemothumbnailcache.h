@@ -70,9 +70,9 @@ public:
 
     static NemoThumbnailCache *instance();
 
-    ThumbnailData requestThumbnail(const QString &path, const QSize &requestedSize, bool crop, const QString &mimeType = QString());
+    ThumbnailData requestThumbnail(const QString &path, const QSize &requestedSize, bool crop, bool unbounded = true, const QString &mimeType = QString());
 
-    ThumbnailData existingThumbnail(const QString &path, const QSize &requestedSize, bool crop) const;
+    ThumbnailData existingThumbnail(const QString &path, const QSize &requestedSize, bool crop, bool unbounded = true) const;
 };
 
 #endif // NEMOTHUMBNAILCACHE_H

@@ -530,7 +530,7 @@ void NemoThumbnailLoader::run()
                 lists[request->priority]->append(request);
             }
         } else {
-            NemoThumbnailCache::ThumbnailData thumbnail = NemoThumbnailCache::instance()->requestThumbnail(fileName, requestedSize, crop, mimeType);
+            NemoThumbnailCache::ThumbnailData thumbnail = NemoThumbnailCache::instance()->requestThumbnail(fileName, requestedSize, crop, true, mimeType);
             QImage image = thumbnail.getScaledImage(requestedSize);
 
             locker.relock();
