@@ -1,6 +1,5 @@
 /*
- * Copyright (C) 2012 Jolla Ltd
- * Contact: Andrew den Exter <andrew.den.exter@jollamobile.com>
+ * Copyright (C) 2012 Robin Burchell <robin+nemo@viroteck.net>
  *
  * You may use this file under the terms of the BSD license as follows:
  *
@@ -30,14 +29,50 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE."
  */
 
-#ifndef NEMOVIDEOTHUMBNAILER_H
-#define NEMOVIDEOTHUMBNAILER_H
+#ifndef NEMOTHUMBNAILCACHE_H
+#define NEMOTHUMBNAILCACHE_H
 
 #include <QImage>
+#include <QSize>
+#include <QString>
 
-namespace NemoVideoThumbnailer
+class Q_DECL_EXPORT NemoThumbnailCache
 {
-    QImage generateThumbnail(const QString &fileName, const QByteArray &cacheKey, const QSize &requestedSize, bool crop);
-}
+public:
+    enum {
+        None = 0,
+        Small = 128,
+        Medium = 256,
+        Large = 512,
+    };
 
-#endif
+    class ThumbnailData
+    {
+    public:
+        ThumbnailData();
+        ThumbnailData(const QString &path, const QImage &image, unsigned size);
+
+        bool validPath() const;
+        QString path() const;
+
+        bool validImage() const;
+        QImage image() const;
+
+        unsigned size() const;
+
+        QImage getScaledImage(const QSize &requestedSize, Qt::TransformationMode mode = Qt::FastTransformation) const;
+
+    private:
+        QString path_;
+        QImage image_;
+        unsigned size_;
+    };
+
+    static NemoThumbnailCache *instance();
+
+    ThumbnailData requestThumbnail(const QString &path, const QSize &requestedSize, bool crop, bool unbounded = true, const QString &mimeType = QString());
+
+    ThumbnailData existingThumbnail(const QString &path, const QSize &requestedSize, bool crop, bool unbounded = true) const;
+};
+
+#endif // NEMOTHUMBNAILCACHE_H

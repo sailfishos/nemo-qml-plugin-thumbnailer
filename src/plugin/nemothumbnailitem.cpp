@@ -32,8 +32,7 @@
 
 #include "nemothumbnailitem.h"
 
-#include "nemothumbnailprovider.h"
-#include "nemovideothumbnailer.h"
+#include "nemothumbnailcache.h"
 
 #include "linkedlist.h"
 
@@ -42,9 +41,28 @@
 #include <QSGSimpleTextureNode>
 #include <QQuickWindow>
 
-template <typename T, int N> static int lengthOf(const T(&)[N]) { return N; }
+#ifdef THUMBNAILER_DEBUG
+#define TDEBUG qDebug
+#else
+#define TDEBUG if(false)qDebug
+#endif
 
-ThumbnailRequest::ThumbnailRequest(NemoThumbnailItem *item, const QString &fileName, const QByteArray &cacheKey)
+namespace {
+
+template <typename T, int N> int lengthOf(const T(&)[N]) { return N; }
+
+int thumbnailerMaxCost()
+{
+    const QByteArray costEnv = qgetenv("NEMO_THUMBNAILER_CACHE_SIZE");
+
+    bool ok = false;
+    int cost = costEnv.toInt(&ok);
+    return ok ? cost : 1360 * 768 * 3;
+}
+
+}
+
+ThumbnailRequest::ThumbnailRequest(NemoThumbnailItem *item, const QString &fileName, uint cacheKey)
     : cacheKey(cacheKey)
     , fileName(fileName)
     , mimeType(item->m_mimeType)
@@ -239,14 +257,6 @@ NemoThumbnailLoader *NemoThumbnailItem::qmlAttachedProperties(QObject *object)
     }
 }
 
-static int thumbnailerMaxCost()
-{
-    const QByteArray costEnv = qgetenv("NEMO_THUMBNAILER_CACHE_SIZE");
-
-    bool ok = false;
-    int cost = costEnv.toInt(&ok);
-    return ok ? cost : 1360 * 768 * 3;
-}
 
 NemoThumbnailLoader::NemoThumbnailLoader(QQuickWindow *window)
     : m_window(window)
@@ -315,9 +325,10 @@ void NemoThumbnailLoader::updateRequest(NemoThumbnailItem *item, bool identityCh
         item->listNode.erase();
 
         const QString fileName = item->m_source.toLocalFile();
-        QByteArray cacheKey = NemoThumbnailProvider::cacheKey(fileName, item->m_sourceSize);
-        if (item->m_fillMode == NemoThumbnailItem::PreserveAspectFit)
-            cacheKey += 'F';
+        const bool crop = item->m_fillMode == NemoThumbnailItem::PreserveAspectCrop;
+
+        // Create an identifier for this request's data
+        const uint cacheKey = qHash(crop) ^ qHash(item->m_sourceSize.width()) ^ qHash(item->m_sourceSize.height()) ^ qHash(fileName);
 
         item->m_request = m_requestCache.value(cacheKey);
 
@@ -460,8 +471,6 @@ bool NemoThumbnailLoader::event(QEvent *event)
 
 void NemoThumbnailLoader::run()
 {
-    NemoThumbnailProvider::setupCache();
-
     QMutexLocker locker(&m_mutex);
 
     for (;;) {
@@ -492,7 +501,6 @@ void NemoThumbnailLoader::run()
         }
 
         Q_ASSERT(request);
-        const QByteArray cacheKey = request->cacheKey;
         const QString fileName = request->fileName;
         const QString mimeType = request->mimeType;
         const QSize requestedSize = request->size;
@@ -503,7 +511,8 @@ void NemoThumbnailLoader::run()
         locker.unlock();
 
         if (tryCache) {
-            QImage image = NemoThumbnailProvider::loadThumbnail(fileName, cacheKey);
+            NemoThumbnailCache::ThumbnailData thumbnail = NemoThumbnailCache::instance()->existingThumbnail(fileName, requestedSize, crop);
+            QImage image = thumbnail.getScaledImage(requestedSize);
 
             locker.relock();
             request->loading = false;
@@ -521,9 +530,8 @@ void NemoThumbnailLoader::run()
                 lists[request->priority]->append(request);
             }
         } else {
-            QImage image = !mimeType.startsWith(QLatin1String("video/"), Qt::CaseInsensitive)
-                    ? NemoThumbnailProvider::generateThumbnail(fileName, cacheKey, requestedSize, crop)
-                    : NemoVideoThumbnailer::generateThumbnail(fileName, cacheKey, requestedSize, crop);
+            NemoThumbnailCache::ThumbnailData thumbnail = NemoThumbnailCache::instance()->requestThumbnail(fileName, requestedSize, crop, true, mimeType);
+            QImage image = thumbnail.getScaledImage(requestedSize);
 
             locker.relock();
             request->loading = false;

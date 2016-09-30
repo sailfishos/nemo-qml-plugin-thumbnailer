@@ -1,6 +1,5 @@
 /*
- * Copyright (C) 2012 Jolla Ltd
- * Contact: Andrew den Exter <andrew.den.exter@jollamobile.com>
+ * Copyright (C) 2012 Robin Burchell <robin+nemo@viroteck.net>
  *
  * You may use this file under the terms of the BSD license as follows:
  *
@@ -30,32 +29,20 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE."
  */
 
-#include "nemovideothumbnailer.h"
-#include "nemothumbnailprovider.h"
+#ifndef NEMOTHUMBNAILPROVIDER_H
+#define NEMOTHUMBNAILPROVIDER_H
 
-#include <QLibrary>
+#include <QQuickImageProvider>
 
-typedef QImage (*CreateThumbnailFunc)(const QString &fileName, const QSize &requestedSize, bool crop);
-
-namespace NemoVideoThumbnailer {
-
-QImage generateThumbnail(const QString &fileName, const QByteArray &cacheKey, const QSize &requestedSize, bool crop)
+class NemoThumbnailProvider : public QQuickImageProvider
 {
-    QImage image;
-
-    static CreateThumbnailFunc createThumbnail = (CreateThumbnailFunc)QLibrary::resolve(
-                QLatin1String(NEMO_THUMBNAILER_DIR "/libvideothumbnailer.so"), "createThumbnail");
-
-    if (createThumbnail) {
-        image = createThumbnail(fileName, requestedSize, crop);
-
-        if (!image.isNull())
-            NemoThumbnailProvider::writeCacheFile(cacheKey, image);
-    } else {
-        qWarning("Cannot generate video thumbnail, thumbnailer function not available.");
+public:
+    NemoThumbnailProvider()
+        : QQuickImageProvider(QQuickImageProvider::Image)
+    {
     }
 
-    return image;
-}
+    QImage requestImage(const QString &id, QSize *size, const QSize &requestedSize);
+};
 
-}
+#endif // NEMOTHUMBNAILPROVIDER_H

@@ -10,9 +10,20 @@ BuildRequires:  pkgconfig(Qt5Core)
 BuildRequires:  pkgconfig(Qt5Gui)
 BuildRequires:  pkgconfig(Qt5Qml)
 BuildRequires:  pkgconfig(Qt5Quick)
+BuildRequires:  oneshot
+%{_oneshot_requires_post}
 
 %description
 %{summary}.
+
+%package devel
+Summary:    Thumbnail support for C++ applications
+Group:      System/Libraries
+Requires:   %{name} = %{version}-%{release}
+
+%description devel
+%{summary}.
+
 
 %prep
 %setup -q -n %{name}-%{version}
@@ -25,11 +36,23 @@ make %{?jobs:-j%jobs}
 %install
 rm -rf %{buildroot}
 %qmake5_install
+chmod +x %{buildroot}/%{_oneshotdir}/*
 
 
 %files
 %defattr(-,root,root,-)
+%{_libdir}/libnemothumbnailer-qt5.so.*
 %{_libdir}/qt5/qml/org/nemomobile/thumbnailer/libnemothumbnailer.so
 %{_libdir}/qt5/qml/org/nemomobile/thumbnailer/qmldir
 %{_libdir}/qt5/qml/org/nemomobile/thumbnailer/plugins.qmltypes
+%{_oneshotdir}/remove-obsolete-nemothumbs-cache-dir
 
+%files devel
+%defattr(-,root,root,-)
+%{_libdir}/libnemothumbnailer-qt5.so
+%{_libdir}/libnemothumbnailer-qt5.prl
+%{_includedir}/nemothumbnailer-qt5/*.h
+%{_libdir}/pkgconfig/nemothumbnailer-qt5.pc
+
+%post
+%{_bindir}/add-oneshot --now remove-obsolete-nemothumbs-cache-dir

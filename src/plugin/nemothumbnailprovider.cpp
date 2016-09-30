@@ -29,27 +29,34 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE."
  */
 
-#ifndef NEMOTHUMBNAILPROVIDER_H
-#define NEMOTHUMBNAILPROVIDER_H
+#include "nemothumbnailprovider.h"
 
-#include <QQuickImageProvider>
+#include "nemothumbnailcache.h"
 
-class NemoThumbnailProvider : public QQuickImageProvider
+#include <QFile>
+#include <QImage>
+#include <QDebug>
+
+QImage NemoThumbnailProvider::requestImage(const QString &id, QSize *size, const QSize &requestedSize)
 {
-public:
-    NemoThumbnailProvider()
-        : QQuickImageProvider(QQuickImageProvider::Image)
-    {
+    // sourceSize should indicate what size thumbnail you want. i.e. if you want a 120x120px thumbnail,
+    // set sourceSize: Qt.size(120, 120).
+    if (!requestedSize.isValid()) {
+        qWarning("You must request a sourceSize whenever you use nemoThumbnail");
+        return QImage();
     }
 
-    QImage requestImage(const QString &id, QSize *size, const QSize &requestedSize);
+    if (size)
+        *size = requestedSize;
 
+    NemoThumbnailCache::ThumbnailData thumbnail = NemoThumbnailCache::instance()->requestThumbnail(id, requestedSize, true);
+    if (thumbnail.validImage()) {
+        return thumbnail.image();
+    }
+    if (thumbnail.validPath()) {
+        return QImage(thumbnail.path());
+    }
 
-    static void setupCache();
-    static QByteArray cacheKey(const QString &fileName, const QSize &requestedSize);
-    static QImage loadThumbnail(const QString &fileName, const QByteArray &cacheKey);
-    static QImage generateThumbnail(const QString &fileName, const QByteArray &cacheKey, const QSize &requestedSize, bool crop = true);
-    static void writeCacheFile(const QByteArray &cacheKey, const QImage &thumbnail);
-};
+    return QImage();
+}
 
-#endif // NEMOTHUMBNAILPROVIDER_H
