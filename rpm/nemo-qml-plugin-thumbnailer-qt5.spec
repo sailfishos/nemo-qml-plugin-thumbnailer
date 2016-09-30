@@ -55,4 +55,7 @@ chmod +x %{buildroot}/%{_oneshotdir}/*
 %{_libdir}/pkgconfig/nemothumbnailer-qt5.pc
 
 %post
+/sbin/ldconfig
 %{_bindir}/add-oneshot --now remove-obsolete-nemothumbs-cache-dir
+
+%postun -p /sbin/ldconfig
