@@ -43,6 +43,7 @@
 #include <QtEndian>
 #include <QElapsedTimer>
 #include <QStandardPaths>
+#include <QProcess>
 
 #ifdef THUMBNAILER_DEBUG
 #define TDEBUG qDebug
@@ -305,24 +306,31 @@ NemoThumbnailCache::ThumbnailData generateImageThumbnail(const QString &path, co
     return NemoThumbnailCache::ThumbnailData();
 }
 
-typedef QImage (*CreateThumbnailFunc)(const QString &path, const QSize &requestedSize, bool crop);
+QStringList generatorArgs(const QString &path, const QString &thumbnailPath, const QSize &requestedSize, bool crop)
+{
+    QStringList args = {
+        QFile::encodeName(path),
+        "-w", QString::number(requestedSize.width()),
+        "-h", QString::number(requestedSize.height()),
+        "-o", QFile::encodeName(thumbnailPath)
+    };
+    if (crop) {
+        args.append("-c");
+    }
+
+    return args;
+}
 
 NemoThumbnailCache::ThumbnailData generateVideoThumbnail(const QString &path, const QByteArray &key, const QSize &requestedSize, bool crop)
 {
-    static CreateThumbnailFunc createVideoThumbnail = (CreateThumbnailFunc)QLibrary::resolve(
-                QLatin1String(NEMO_THUMBNAILER_DIR "/libvideothumbnailer.so"), "createThumbnail");
+    const QString thumbnailPath(cachePath(key, true));
 
-    if (createVideoThumbnail) {
-        QImage img(createVideoThumbnail(path, requestedSize, crop));
-        if (!img.isNull()) {
-            const QString thumbnailPath(writeCacheFile(key, img));
-            TDEBUG() << Q_FUNC_INFO << "Wrote " << path << " to cache";
-            return NemoThumbnailCache::ThumbnailData(thumbnailPath, img, requestedSize.width());
-        } else {
-            TDEBUG() << Q_FUNC_INFO << "Could not createVideoThumbnail:" << path << requestedSize << crop;
-        }
+    int rv = QProcess::execute(QStringLiteral("/usr/bin/thumbnaild-video"), generatorArgs(path, thumbnailPath, requestedSize, crop));
+    if (rv == 0) {
+        TDEBUG() << Q_FUNC_INFO << "Wrote " << path << " to cache";
+        return NemoThumbnailCache::ThumbnailData(thumbnailPath, QImage(), requestedSize.width());
     } else {
-        qWarning("Cannot generate video thumbnail, thumbnailer function not available.");
+        TDEBUG() << Q_FUNC_INFO << "Could not generateVideoThumbnail:" << path << requestedSize << crop;
     }
 
     return NemoThumbnailCache::ThumbnailData();

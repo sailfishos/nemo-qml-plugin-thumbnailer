@@ -16,14 +16,6 @@ BuildRequires:  oneshot
 %description
 %{summary}.
 
-%package video
-Summary:    Video thumbnailer provider
-Group:      System/Libraries
-Requires:   %{name} = %{version}-%{release}
-
-%description video
-%{summary}.
-
 %package devel
 Summary:    Thumbnail support for C++ applications
 Group:      System/Libraries
@@ -54,10 +46,6 @@ chmod +x %{buildroot}/%{_oneshotdir}/*
 %{_libdir}/qt5/qml/org/nemomobile/thumbnailer/qmldir
 %{_libdir}/qt5/qml/org/nemomobile/thumbnailer/plugins.qmltypes
 %{_oneshotdir}/remove-obsolete-nemothumbs-cache-dir
-
-%files video
-%defattr(-,root,root,-)
-%{_libdir}/qt5/qml/org/nemomobile/thumbnailer/thumbnailers/libvideothumbnailer.so
 
 %files devel
 %defattr(-,root,root,-)
