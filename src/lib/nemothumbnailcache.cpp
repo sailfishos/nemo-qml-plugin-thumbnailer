@@ -336,9 +336,28 @@ NemoThumbnailCache::ThumbnailData generateVideoThumbnail(const QString &path, co
     return NemoThumbnailCache::ThumbnailData();
 }
 
+NemoThumbnailCache::ThumbnailData generatePdfThumbnail(const QString &path, const QByteArray &key, const QSize &requestedSize, bool crop)
+{
+    const QString thumbnailPath(cachePath(key, true));
+
+    int rv = QProcess::execute(QStringLiteral("/usr/bin/thumbnaild-pdf"), generatorArgs(path, thumbnailPath, requestedSize, crop));
+    if (rv == 0) {
+        TDEBUG() << Q_FUNC_INFO << "Wrote " << path << " to cache";
+        return NemoThumbnailCache::ThumbnailData(thumbnailPath, QImage(), requestedSize.width());
+    } else {
+        TDEBUG() << Q_FUNC_INFO << "Could not generatePdfThumbnail:" << path << requestedSize << crop;
+    }
+
+    return NemoThumbnailCache::ThumbnailData();
+}
+
 NemoThumbnailCache::ThumbnailData generateThumbnail(const QString &path, const QByteArray &key, unsigned size, bool crop, const QString &mimeType)
 {
     const QSize boundsSize(size, size);
+
+    if (mimeType == QStringLiteral("application/pdf")) {
+        return generatePdfThumbnail(path, key, boundsSize, crop);
+    }
 
     if (mimeType.startsWith("video/")) {
         return generateVideoThumbnail(path, key, boundsSize, crop);
