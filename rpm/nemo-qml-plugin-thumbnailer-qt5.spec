@@ -59,3 +59,4 @@ chmod +x %{buildroot}/%{_oneshotdir}/*
 %{_bindir}/add-oneshot --now remove-obsolete-nemothumbs-cache-dir
 
 %postun -p /sbin/ldconfig
+
