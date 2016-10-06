@@ -42,14 +42,11 @@
 #include <QDateTime>
 #include <QtEndian>
 #include <QElapsedTimer>
+#include <QLoggingCategory>
 #include <QStandardPaths>
 #include <QProcess>
 
-#ifdef THUMBNAILER_DEBUG
-#define TDEBUG qDebug
-#else
-#define TDEBUG if(false)qDebug
-#endif
+Q_LOGGING_CATEGORY(thumbnailer, "org.nemomobile.thumbnailer")
 
 namespace {
 
@@ -176,7 +173,7 @@ QString writeCacheFile(const QByteArray &key, const QImage &img)
     const QString thumbnailPath(cachePath(key, true));
     QFile thumbnailFile(thumbnailPath);
     if (!thumbnailFile.open(QIODevice::WriteOnly)) {
-        qWarning() << "Couldn't cache to " << thumbnailFile.fileName();
+        qCWarning(thumbnailer) << "Couldn't cache to " << thumbnailFile.fileName();
         return QString();
     }
     img.save(&thumbnailFile, img.hasAlphaChannel() ? "PNG" : "JPG");
@@ -293,7 +290,7 @@ NemoThumbnailCache::ThumbnailData generateImageThumbnail(const QString &path, co
         if (meta.orientation() != NemoImageMetadata::TopLeft ||
             (originalSize != requestedSize && originalSize.isValid())) {
             thumbnailPath = writeCacheFile(key, img);
-            TDEBUG() << Q_FUNC_INFO << "Wrote " << path << " to cache";
+            qCDebug(thumbnailer) << Q_FUNC_INFO << "Wrote " << path << " to cache";
         } else {
             // The thumbnail is the same as int input; return the original file path
             thumbnailPath = path;
@@ -302,7 +299,7 @@ NemoThumbnailCache::ThumbnailData generateImageThumbnail(const QString &path, co
         return NemoThumbnailCache::ThumbnailData(thumbnailPath, img, requestedSize.width());
     }
 
-    TDEBUG() << Q_FUNC_INFO << "Could not generateImageThumbnail:" << path << requestedSize << crop;
+    qCWarning(thumbnailer) << Q_FUNC_INFO << "Could not generateImageThumbnail:" << path << requestedSize << crop;
     return NemoThumbnailCache::ThumbnailData();
 }
 
@@ -327,10 +324,10 @@ NemoThumbnailCache::ThumbnailData generateVideoThumbnail(const QString &path, co
 
     int rv = QProcess::execute(QStringLiteral("/usr/bin/thumbnaild-video"), generatorArgs(path, thumbnailPath, requestedSize, crop));
     if (rv == 0) {
-        TDEBUG() << Q_FUNC_INFO << "Wrote " << path << " to cache";
+        qCDebug(thumbnailer) << Q_FUNC_INFO << "Wrote " << path << " to cache";
         return NemoThumbnailCache::ThumbnailData(thumbnailPath, QImage(), requestedSize.width());
     } else {
-        TDEBUG() << Q_FUNC_INFO << "Could not generateVideoThumbnail:" << path << requestedSize << crop;
+        qCWarning(thumbnailer) << Q_FUNC_INFO << "Could not generateVideoThumbnail:" << path << requestedSize << crop;
     }
 
     return NemoThumbnailCache::ThumbnailData();
@@ -342,10 +339,10 @@ NemoThumbnailCache::ThumbnailData generatePdfThumbnail(const QString &path, cons
 
     int rv = QProcess::execute(QStringLiteral("/usr/bin/thumbnaild-pdf"), generatorArgs(path, thumbnailPath, requestedSize, crop));
     if (rv == 0) {
-        TDEBUG() << Q_FUNC_INFO << "Wrote " << path << " to cache";
+        qCDebug(thumbnailer) << Q_FUNC_INFO << "Wrote " << path << " to cache";
         return NemoThumbnailCache::ThumbnailData(thumbnailPath, QImage(), requestedSize.width());
     } else {
-        TDEBUG() << Q_FUNC_INFO << "Could not generatePdfThumbnail:" << path << requestedSize << crop;
+        qCWarning(thumbnailer) << Q_FUNC_INFO << "Could not generatePdfThumbnail:" << path << requestedSize << crop;
     }
 
     return NemoThumbnailCache::ThumbnailData();
@@ -454,7 +451,7 @@ NemoThumbnailCache::ThumbnailData NemoThumbnailCache::requestThumbnail(const QSt
             const QByteArray key = cacheKey(path, size, crop);
             return generateThumbnail(path, key, size, crop, mimeType);
         } else {
-            TDEBUG() << Q_FUNC_INFO << "Invalid thumbnail size " << requestedSize << " for " << path;
+            qCWarning(thumbnailer) << Q_FUNC_INFO << "Invalid thumbnail size " << requestedSize << " for " << path;
         }
     }
 
@@ -469,7 +466,7 @@ NemoThumbnailCache::ThumbnailData NemoThumbnailCache::existingThumbnail(const QS
             const QByteArray key = cacheKey(path, size, crop);
             QString thumbnailPath = attemptCachedServe(path, key);
             if (!thumbnailPath.isEmpty()) {
-                TDEBUG() << Q_FUNC_INFO << "Read " << path << " from cache";
+                qCDebug(thumbnailer) << Q_FUNC_INFO << "Read " << path << " from cache";
                 return ThumbnailData(thumbnailPath, QImage(), size);
             }
         }

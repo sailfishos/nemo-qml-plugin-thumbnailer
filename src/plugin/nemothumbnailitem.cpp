@@ -41,12 +41,6 @@
 #include <QSGSimpleTextureNode>
 #include <QQuickWindow>
 
-#ifdef THUMBNAILER_DEBUG
-#define TDEBUG qDebug
-#else
-#define TDEBUG if(false)qDebug
-#endif
-
 namespace {
 
 template <typename T, int N> int lengthOf(const T(&)[N]) { return N; }
