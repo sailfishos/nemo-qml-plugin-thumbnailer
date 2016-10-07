@@ -1,7 +1,9 @@
 TEMPLATE = lib
 TARGET = nemothumbnailer-qt5
 
-CONFIG += qt hide_symbols create_pc create_prl c++11
+CONFIG += qt hide_symbols create_pc create_prl c++11 link_pkgconfig
+
+PKGCONFIG += mlite5
 
 SOURCES += \
     nemoimagemetadata.cpp \

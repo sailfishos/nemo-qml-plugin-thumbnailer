@@ -44,6 +44,7 @@ public:
         Small = 128,
         Medium = 256,
         Large = 512,
+        ExtraLarge = 768
     };
 
     class ThumbnailData
@@ -60,7 +61,7 @@ public:
 
         unsigned size() const;
 
-        QImage getScaledImage(const QSize &requestedSize, Qt::TransformationMode mode = Qt::FastTransformation) const;
+        QImage getScaledImage(const QSize &requestedSize, bool crop = false, Qt::TransformationMode mode = Qt::FastTransformation) const;
 
     private:
         QString path_;
@@ -73,6 +74,12 @@ public:
     ThumbnailData requestThumbnail(const QString &path, const QSize &requestedSize, bool crop, bool unbounded = true, const QString &mimeType = QString());
 
     ThumbnailData existingThumbnail(const QString &path, const QSize &requestedSize, bool crop, bool unbounded = true) const;
+
+private:
+    NemoThumbnailCache();
+
+    unsigned screenWidth_;
+    unsigned screenHeight_;
 };
 
 #endif // NEMOTHUMBNAILCACHE_H

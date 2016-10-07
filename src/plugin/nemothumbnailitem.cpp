@@ -506,7 +506,7 @@ void NemoThumbnailLoader::run()
 
         if (tryCache) {
             NemoThumbnailCache::ThumbnailData thumbnail = NemoThumbnailCache::instance()->existingThumbnail(fileName, requestedSize, crop);
-            QImage image = thumbnail.getScaledImage(requestedSize);
+            QImage image = thumbnail.getScaledImage(requestedSize, crop);
 
             locker.relock();
             request->loading = false;
@@ -525,7 +525,7 @@ void NemoThumbnailLoader::run()
             }
         } else {
             NemoThumbnailCache::ThumbnailData thumbnail = NemoThumbnailCache::instance()->requestThumbnail(fileName, requestedSize, crop, true, mimeType);
-            QImage image = thumbnail.getScaledImage(requestedSize);
+            QImage image = thumbnail.getScaledImage(requestedSize, crop);
 
             locker.relock();
             request->loading = false;
