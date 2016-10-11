@@ -41,12 +41,6 @@
 #include <QSGSimpleTextureNode>
 #include <QQuickWindow>
 
-#ifdef THUMBNAILER_DEBUG
-#define TDEBUG qDebug
-#else
-#define TDEBUG if(false)qDebug
-#endif
-
 namespace {
 
 template <typename T, int N> int lengthOf(const T(&)[N]) { return N; }
@@ -512,7 +506,7 @@ void NemoThumbnailLoader::run()
 
         if (tryCache) {
             NemoThumbnailCache::ThumbnailData thumbnail = NemoThumbnailCache::instance()->existingThumbnail(fileName, requestedSize, crop);
-            QImage image = thumbnail.getScaledImage(requestedSize);
+            QImage image = thumbnail.getScaledImage(requestedSize, crop);
 
             locker.relock();
             request->loading = false;
@@ -531,7 +525,7 @@ void NemoThumbnailLoader::run()
             }
         } else {
             NemoThumbnailCache::ThumbnailData thumbnail = NemoThumbnailCache::instance()->requestThumbnail(fileName, requestedSize, crop, true, mimeType);
-            QImage image = thumbnail.getScaledImage(requestedSize);
+            QImage image = thumbnail.getScaledImage(requestedSize, crop);
 
             locker.relock();
             request->loading = false;

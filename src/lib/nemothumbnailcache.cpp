@@ -42,16 +42,16 @@
 #include <QDateTime>
 #include <QtEndian>
 #include <QElapsedTimer>
+#include <QLoggingCategory>
+#include <MGConfItem>
 #include <QStandardPaths>
 #include <QProcess>
 
-#ifdef THUMBNAILER_DEBUG
-#define TDEBUG qDebug
-#else
-#define TDEBUG if(false)qDebug
-#endif
+Q_LOGGING_CATEGORY(thumbnailer, "org.nemomobile.thumbnailer")
 
 namespace {
+
+template <typename T, int N> constexpr int lengthOf(const T(&)[N]) { return N; }
 
 bool acceptableUnboundedSize(const QSize &requestedSize, bool crop, unsigned size)
 {
@@ -60,16 +60,16 @@ bool acceptableUnboundedSize(const QSize &requestedSize, bool crop, unsigned siz
     return crop ? (sufficientWidth && sufficientHeight) : (sufficientWidth || sufficientHeight);
 }
 
-unsigned selectUnboundedSize(const QSize &requestedSize, bool crop)
+unsigned selectUnboundedSize(const QSize &requestedSize, unsigned screenWidth, unsigned screenHeight, bool crop)
 {
     // Prefer a thumbnail size at least as large as the requested size
-    return acceptableUnboundedSize(requestedSize, crop, NemoThumbnailCache::Small)
-               ? NemoThumbnailCache::Small
-               : (acceptableUnboundedSize(requestedSize, crop, NemoThumbnailCache::Medium)
-                    ? NemoThumbnailCache::Medium
-                    : (acceptableUnboundedSize(requestedSize, crop, NemoThumbnailCache::Large)
-                         ? NemoThumbnailCache::Large
-                         : NemoThumbnailCache::None));
+    const unsigned candidates[] = { NemoThumbnailCache::Small, NemoThumbnailCache::Medium, NemoThumbnailCache::Large, screenWidth, screenHeight };
+    for (unsigned i = 0; i < lengthOf(candidates); ++i) {
+        if (acceptableUnboundedSize(requestedSize, crop, candidates[i])) {
+            return candidates[i];
+        }
+    }
+    return NemoThumbnailCache::None;
 }
 
 bool acceptableBoundedSize(const QSize &requestedSize, unsigned size)
@@ -79,40 +79,52 @@ bool acceptableBoundedSize(const QSize &requestedSize, unsigned size)
     return manageableWidth && manageableHeight;
 }
 
-unsigned selectBoundedSize(const QSize &requestedSize)
+unsigned selectBoundedSize(const QSize &requestedSize, unsigned screenWidth, unsigned screenHeight)
 {
     // Select a size that does not exceed the requested size
-    return acceptableBoundedSize(requestedSize, NemoThumbnailCache::Large)
-               ? NemoThumbnailCache::Large
-               : (acceptableBoundedSize(requestedSize, NemoThumbnailCache::Medium)
-                    ? NemoThumbnailCache::Medium
-                    : (acceptableBoundedSize(requestedSize, NemoThumbnailCache::Small)
-                         ? NemoThumbnailCache::Small
-                         : NemoThumbnailCache::None));
+    const unsigned candidates[] = { screenHeight, screenWidth, NemoThumbnailCache::Large, NemoThumbnailCache::Medium, NemoThumbnailCache::Small };
+    for (unsigned i = 0; i < lengthOf(candidates); ++i) {
+        if (acceptableBoundedSize(requestedSize, candidates[i])) {
+            return candidates[i];
+        }
+    }
+    return NemoThumbnailCache::None;
 }
 
-unsigned selectSize(const QSize &requestedSize, bool crop, bool unbounded)
+unsigned selectSize(const QSize &requestedSize, unsigned screenWidth, unsigned screenHeight, bool crop, bool unbounded)
 {
-    return unbounded ? selectUnboundedSize(requestedSize, crop) : selectBoundedSize(requestedSize);
+    return unbounded
+            ? selectUnboundedSize(requestedSize, screenWidth, screenHeight, crop)
+            : selectBoundedSize(requestedSize, screenWidth, screenHeight);
 }
 
-unsigned increaseSize(unsigned size)
+unsigned increaseSize(unsigned size, unsigned screenWidth, unsigned screenHeight)
 {
-    return size == NemoThumbnailCache::Small ? NemoThumbnailCache::Medium
-                                             : (size == NemoThumbnailCache::Medium ? NemoThumbnailCache::Large
-                                                                                   : NemoThumbnailCache::None);
+    const unsigned candidates[] = { NemoThumbnailCache::Small, NemoThumbnailCache::Medium, NemoThumbnailCache::Large, screenWidth, screenHeight };
+    for (unsigned i = 0; i < lengthOf(candidates) - 1; ++i) {
+        if (candidates[i] == size) {
+            return candidates[i] + 1;
+        }
+    }
+    return NemoThumbnailCache::None;
 }
 
-unsigned decreaseSize(unsigned size)
+unsigned decreaseSize(unsigned size, unsigned screenWidth, unsigned screenHeight)
 {
-    return size == NemoThumbnailCache::Large ? NemoThumbnailCache::Medium
-                                             : (size == NemoThumbnailCache::Medium ? NemoThumbnailCache::Small
-                                                                                   : NemoThumbnailCache::None);
+    const unsigned candidates[] = { screenHeight, screenWidth, NemoThumbnailCache::Large, NemoThumbnailCache::Medium, NemoThumbnailCache::Small };
+    for (unsigned i = 0; i < lengthOf(candidates) - 1; ++i) {
+        if (candidates[i] == size) {
+            return candidates[i] + 1;
+        }
+    }
+    return NemoThumbnailCache::None;
 }
 
-unsigned nextSize(unsigned size, bool unbounded)
+unsigned nextSize(unsigned size, unsigned screenWidth, unsigned screenHeight, bool unbounded)
 {
-    return unbounded ? increaseSize(size) : decreaseSize(size);
+    return unbounded
+            ? increaseSize(size, screenWidth, screenHeight)
+            : decreaseSize(size, screenWidth, screenHeight);
 }
 
 inline QString cachePath()
@@ -176,7 +188,7 @@ QString writeCacheFile(const QByteArray &key, const QImage &img)
     const QString thumbnailPath(cachePath(key, true));
     QFile thumbnailFile(thumbnailPath);
     if (!thumbnailFile.open(QIODevice::WriteOnly)) {
-        qWarning() << "Couldn't cache to " << thumbnailFile.fileName();
+        qCWarning(thumbnailer) << "Couldn't cache to " << thumbnailFile.fileName();
         return QString();
     }
     img.save(&thumbnailFile, img.hasAlphaChannel() ? "PNG" : "JPG");
@@ -247,7 +259,76 @@ QString imagePath(const QString &uri)
     return path;
 }
 
-NemoThumbnailCache::ThumbnailData generateImageThumbnail(const QString &path, const QByteArray &key, const QSize &requestedSize, bool crop)
+QImage scaleImage(const QImage &image, const QSize &requestedSize, bool crop, Qt::TransformationMode mode)
+{
+    const QImage scaledImage(image.size() != requestedSize
+            ? image.scaled(requestedSize, crop ? Qt::KeepAspectRatioByExpanding : Qt::KeepAspectRatio, mode)
+            : image);
+
+    if (crop && scaledImage.size() != requestedSize) {
+        QRect cropRect(0, 0, requestedSize.width(), requestedSize.height());
+        cropRect.moveCenter(QPoint(image.width() / 2, image.height() / 2));
+
+        return scaledImage.copy(cropRect);
+    } else {
+        return scaledImage;
+    }
+}
+
+QImage readImageThumbnail(
+        QImageReader *reader,
+        const QSize requestedSize,
+        NemoImageMetadata::Orientation orientation,
+        bool crop,
+        Qt::TransformationMode mode)
+{
+    const QSize originalSize = reader->size();
+    const QSize rotatedSize = orientation == NemoImageMetadata::LeftTop
+                || orientation == NemoImageMetadata::RightTop
+                || orientation == NemoImageMetadata::RightBottom
+                || orientation == NemoImageMetadata::LeftBottom
+            ? requestedSize.transposed()
+            : requestedSize;
+
+    if (originalSize.isValid()) {
+        if (crop) {
+            // scales arbitrary sized source image to requested size scaling either up or down
+            // keeping aspect ratio of the original image intact by maximizing either width or height
+            // and cropping the rest of the image away
+            QSize scaledSize(originalSize);
+
+            // now scale it filling the original rectangle by keeping aspect ratio, but expand if needed.
+            scaledSize.scale(requestedSize, Qt::KeepAspectRatioByExpanding);
+
+            // set the adjusted clipping rectangle in the center of the scaled image
+            QPoint center((scaledSize.width() - 1) / 2, (scaledSize.height() - 1) / 2);
+            QRect cr(0, 0, rotatedSize.width(), rotatedSize.height());
+            cr.moveCenter(center);
+            reader->setScaledClipRect(cr);
+
+            // set requested target size of a thumbnail
+            reader->setScaledSize(scaledSize);
+        } else {
+            // Maintains correct aspect ratio without cropping, as such the final image may
+            // be smaller than requested in one dimension.
+            QSize scaledSize(originalSize);
+            scaledSize.scale(rotatedSize, Qt::KeepAspectRatio);
+            reader->setScaledSize(scaledSize);
+        }
+    }
+
+    QImage image(reader->read());
+
+    if (!originalSize.isValid()) {
+        image = scaleImage(image, rotatedSize, crop, mode);
+    }
+
+    return orientation != NemoImageMetadata::NemoImageMetadata::TopLeft
+            ? rotate(image, orientation)
+            : image;
+}
+
+NemoThumbnailCache::ThumbnailData generateImageThumbnail(const QString &path, const QByteArray &key, const int requestedSize, bool crop)
 {
     // image was not in cache thus we read it
     QImageReader ir(path);
@@ -255,54 +336,25 @@ NemoThumbnailCache::ThumbnailData generateImageThumbnail(const QString &path, co
         const QSize originalSize = ir.size();
         const QByteArray format = ir.format();
 
-        if (originalSize != requestedSize && originalSize.isValid()) {
-            if (crop) {
-                // scales arbitrary sized source image to requested size scaling either up or down
-                // keeping aspect ratio of the original image intact by maximizing either width or height
-                // and cropping the rest of the image away
-                QSize scaledSize(originalSize);
+        NemoImageMetadata meta(path, format);
 
-                // now scale it filling the original rectangle by keeping aspect ratio, but expand if needed.
-                scaledSize.scale(requestedSize, Qt::KeepAspectRatioByExpanding);
-
-                // set the adjusted clipping rectangle in the center of the scaled image
-                QPoint center((scaledSize.width() - 1) / 2, (scaledSize.height() - 1) / 2);
-                QRect cr(0,0,requestedSize.width(), requestedSize.height());
-                cr.moveCenter(center);
-                ir.setScaledClipRect(cr);
-
-                // set requested target size of a thumbnail
-                ir.setScaledSize(scaledSize);
-            } else {
-                // Maintains correct aspect ratio without cropping, as such the final image may
-                // be smaller than requested in one dimension.
-                QSize scaledSize(originalSize);
-                scaledSize.scale(requestedSize, Qt::KeepAspectRatio);
-                ir.setScaledSize(scaledSize);
-            }
+        if ((meta.orientation() == NemoImageMetadata::TopLeft || requestedSize > NemoThumbnailCache::ExtraLarge)
+                && (originalSize.width() * 9 < requestedSize * 10 || originalSize.height() * 9 < requestedSize * 10)) {
+            qCDebug(thumbnailer) << Q_FUNC_INFO << "Returning original image path " << path << requestedSize << originalSize;
+            return NemoThumbnailCache::ThumbnailData(path, QImage(), requestedSize);
         }
 
-        QImage img(ir.read());
-
-        NemoImageMetadata meta(path, format);
-        if (meta.orientation() != NemoImageMetadata::TopLeft)
-            img = rotate(img, meta.orientation());
+        QImage img = readImageThumbnail(
+                    &ir, QSize(requestedSize, requestedSize), meta.orientation(), crop, Qt::FastTransformation);
 
         // write the scaled image to cache
-        QString thumbnailPath;
-        if (meta.orientation() != NemoImageMetadata::TopLeft ||
-            (originalSize != requestedSize && originalSize.isValid())) {
-            thumbnailPath = writeCacheFile(key, img);
-            TDEBUG() << Q_FUNC_INFO << "Wrote " << path << " to cache";
-        } else {
-            // The thumbnail is the same as int input; return the original file path
-            thumbnailPath = path;
-        }
+        QString thumbnailPath = writeCacheFile(key, img);
+        qCDebug(thumbnailer) << Q_FUNC_INFO << "Wrote " << path << " to cache";
 
-        return NemoThumbnailCache::ThumbnailData(thumbnailPath, img, requestedSize.width());
+        return NemoThumbnailCache::ThumbnailData(thumbnailPath, img, requestedSize);
     }
 
-    TDEBUG() << Q_FUNC_INFO << "Could not generateImageThumbnail:" << path << requestedSize << crop;
+    qCWarning(thumbnailer) << Q_FUNC_INFO << "Could not generateImageThumbnail:" << path << requestedSize << crop;
     return NemoThumbnailCache::ThumbnailData();
 }
 
@@ -327,10 +379,10 @@ NemoThumbnailCache::ThumbnailData generateVideoThumbnail(const QString &path, co
 
     int rv = QProcess::execute(QStringLiteral("/usr/bin/thumbnaild-video"), generatorArgs(path, thumbnailPath, requestedSize, crop));
     if (rv == 0) {
-        TDEBUG() << Q_FUNC_INFO << "Wrote " << path << " to cache";
+        qCDebug(thumbnailer) << Q_FUNC_INFO << "Wrote " << path << " to cache";
         return NemoThumbnailCache::ThumbnailData(thumbnailPath, QImage(), requestedSize.width());
     } else {
-        TDEBUG() << Q_FUNC_INFO << "Could not generateVideoThumbnail:" << path << requestedSize << crop;
+        qCWarning(thumbnailer) << Q_FUNC_INFO << "Could not generateVideoThumbnail:" << path << requestedSize << crop;
     }
 
     return NemoThumbnailCache::ThumbnailData();
@@ -342,10 +394,10 @@ NemoThumbnailCache::ThumbnailData generatePdfThumbnail(const QString &path, cons
 
     int rv = QProcess::execute(QStringLiteral("/usr/bin/thumbnaild-pdf"), generatorArgs(path, thumbnailPath, requestedSize, crop));
     if (rv == 0) {
-        TDEBUG() << Q_FUNC_INFO << "Wrote " << path << " to cache";
+        qCDebug(thumbnailer) << Q_FUNC_INFO << "Wrote " << path << " to cache";
         return NemoThumbnailCache::ThumbnailData(thumbnailPath, QImage(), requestedSize.width());
     } else {
-        TDEBUG() << Q_FUNC_INFO << "Could not generatePdfThumbnail:" << path << requestedSize << crop;
+        qCWarning(thumbnailer) << Q_FUNC_INFO << "Could not generatePdfThumbnail:" << path << requestedSize << crop;
     }
 
     return NemoThumbnailCache::ThumbnailData();
@@ -364,7 +416,7 @@ NemoThumbnailCache::ThumbnailData generateThumbnail(const QString &path, const Q
     }
 
     // Assume image data
-    return generateImageThumbnail(path, key, boundsSize, crop);
+    return generateImageThumbnail(path, key, size, crop);
 }
 
 thread_local NemoThumbnailCache *cacheInstance = 0;
@@ -409,27 +461,26 @@ unsigned NemoThumbnailCache::ThumbnailData::size() const
     return size_;
 }
 
-QImage NemoThumbnailCache::ThumbnailData::getScaledImage(const QSize &requestedSize, Qt::TransformationMode mode) const
+QImage NemoThumbnailCache::ThumbnailData::getScaledImage(const QSize &requestedSize, bool crop, Qt::TransformationMode mode) const
 {
-    QImage rv;
-
     if (!image_.isNull()) {
-        rv = image_.scaled(requestedSize.width(), requestedSize.height(), Qt::KeepAspectRatio, mode);
+        return scaleImage(image_, requestedSize, crop, mode);
     } else if (!path_.isEmpty()) {
-        QImageReader ir(path_);
-        if (ir.canRead()) {
-            QSize scaledSize(ir.size());
-            if (scaledSize != requestedSize) {
-                scaledSize.scale(requestedSize, Qt::KeepAspectRatio);
-                ir.setScaledSize(scaledSize);
-            }
-            rv = ir.read();
-        }
-    }
+        QImageReader reader(path_);
 
-    return rv;
+        NemoImageMetadata meta(path_, reader.format());
+
+        return readImageThumbnail(&reader, requestedSize, meta.orientation(), crop, mode);
+    } else {
+        return QImage();
+    }
 }
 
+NemoThumbnailCache::NemoThumbnailCache()
+    : screenWidth_(MGConfItem(QStringLiteral("/lipstick/screen/primary/width")).value(540).toInt())
+    , screenHeight_(MGConfItem(QStringLiteral("/lipstick/screen/primary/height")).value(960).toInt())
+{
+}
 
 NemoThumbnailCache *NemoThumbnailCache::instance()
 {
@@ -449,12 +500,12 @@ NemoThumbnailCache::ThumbnailData NemoThumbnailCache::requestThumbnail(const QSt
             return existing;
         }
 
-        const unsigned size(selectSize(requestedSize, crop, unbounded));
+        const unsigned size(selectSize(requestedSize, screenWidth_, screenHeight_, crop, unbounded));
         if (size != None) {
             const QByteArray key = cacheKey(path, size, crop);
             return generateThumbnail(path, key, size, crop, mimeType);
         } else {
-            TDEBUG() << Q_FUNC_INFO << "Invalid thumbnail size " << requestedSize << " for " << path;
+            qCWarning(thumbnailer) << Q_FUNC_INFO << "Invalid thumbnail size " << requestedSize << " for " << path;
         }
     }
 
@@ -465,11 +516,13 @@ NemoThumbnailCache::ThumbnailData NemoThumbnailCache::existingThumbnail(const QS
 {
     const QString path(imagePath(uri));
     if (!path.isEmpty()) {
-        for (unsigned size(selectSize(requestedSize, crop, unbounded)); size != None; size = nextSize(size, unbounded)) {
+        for (unsigned size(selectSize(requestedSize, screenWidth_, screenHeight_, crop, unbounded));
+                size != None;
+                size = nextSize(size, screenWidth_, screenHeight_, unbounded)) {
             const QByteArray key = cacheKey(path, size, crop);
             QString thumbnailPath = attemptCachedServe(path, key);
             if (!thumbnailPath.isEmpty()) {
-                TDEBUG() << Q_FUNC_INFO << "Read " << path << " from cache";
+                qCDebug(thumbnailer) << Q_FUNC_INFO << "Read " << path << " from cache";
                 return ThumbnailData(thumbnailPath, QImage(), size);
             }
         }
