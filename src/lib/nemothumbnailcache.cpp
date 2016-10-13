@@ -47,7 +47,7 @@
 #include <QStandardPaths>
 #include <QProcess>
 
-Q_LOGGING_CATEGORY(thumbnailer, "org.nemomobile.thumbnailer")
+Q_LOGGING_CATEGORY(thumbnailer, "org.nemomobile.thumbnailer", QtWarningMsg)
 
 namespace {
 
