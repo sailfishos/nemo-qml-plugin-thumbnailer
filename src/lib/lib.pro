@@ -30,5 +30,3 @@ QMAKE_PKGCONFIG_INCDIR = $$headers.path
 QMAKE_PKGCONFIG_DESTDIR = pkgconfig
 
 INSTALLS += target headers pkgconfig
-
-include(../src.pri)

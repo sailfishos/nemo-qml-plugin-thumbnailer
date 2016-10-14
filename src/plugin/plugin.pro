@@ -26,5 +26,3 @@ SOURCES += plugin.cpp \
            nemothumbnailitem.cpp
 HEADERS += nemothumbnailprovider.h \
            nemothumbnailitem.h
-
-include(../src.pri)
