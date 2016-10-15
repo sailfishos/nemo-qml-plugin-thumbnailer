@@ -47,7 +47,7 @@
 #include <QStandardPaths>
 #include <QProcess>
 
-Q_LOGGING_CATEGORY(thumbnailer, "org.nemomobile.thumbnailer", QtWarningMsg)
+Q_LOGGING_CATEGORY(thumbnailer, "org.nemomobile.thumbnailer")
 
 namespace {
 
@@ -344,7 +344,6 @@ NemoThumbnailCache::ThumbnailData generateImageThumbnail(const QString &path, co
 
         if ((meta.orientation() == NemoImageMetadata::TopLeft || requestedSize > NemoThumbnailCache::ExtraLarge)
                 && (originalSize.width() * 9 < requestedSize * 10 || originalSize.height() * 9 < requestedSize * 10)) {
-            qCDebug(thumbnailer) << Q_FUNC_INFO << "Returning original image path " << path << requestedSize << originalSize;
             return NemoThumbnailCache::ThumbnailData(path, QImage(), requestedSize);
         }
 
@@ -353,7 +352,6 @@ NemoThumbnailCache::ThumbnailData generateImageThumbnail(const QString &path, co
 
         // write the scaled image to cache
         QString thumbnailPath = writeCacheFile(key, img);
-        qCDebug(thumbnailer) << Q_FUNC_INFO << "Wrote" << path << "of size" << requestedSize << "to cache";
 
         return NemoThumbnailCache::ThumbnailData(thumbnailPath, img, requestedSize);
     }
@@ -383,7 +381,6 @@ NemoThumbnailCache::ThumbnailData generateVideoThumbnail(const QString &path, co
 
     int rv = QProcess::execute(QStringLiteral("/usr/bin/thumbnaild-video"), generatorArgs(path, thumbnailPath, requestedSize, crop));
     if (rv == 0) {
-        qCDebug(thumbnailer) << Q_FUNC_INFO << "Wrote " << path << " to cache";
         return NemoThumbnailCache::ThumbnailData(thumbnailPath, QImage(), requestedSize.width());
     } else {
         qCWarning(thumbnailer) << Q_FUNC_INFO << "Could not generateVideoThumbnail:" << path << requestedSize << crop;
@@ -398,7 +395,6 @@ NemoThumbnailCache::ThumbnailData generatePdfThumbnail(const QString &path, cons
 
     int rv = QProcess::execute(QStringLiteral("/usr/bin/thumbnaild-pdf"), generatorArgs(path, thumbnailPath, requestedSize, crop));
     if (rv == 0) {
-        qCDebug(thumbnailer) << Q_FUNC_INFO << "Wrote " << path << " to cache";
         return NemoThumbnailCache::ThumbnailData(thumbnailPath, QImage(), requestedSize.width());
     } else {
         qCWarning(thumbnailer) << Q_FUNC_INFO << "Could not generatePdfThumbnail:" << path << requestedSize << crop;
@@ -529,7 +525,6 @@ NemoThumbnailCache::ThumbnailData NemoThumbnailCache::existingThumbnail(const QS
             const QByteArray key = cacheKey(path, size, crop);
             QString thumbnailPath = attemptCachedServe(path, key);
             if (!thumbnailPath.isEmpty()) {
-                qCDebug(thumbnailer) << Q_FUNC_INFO << "Read " << path << "of size" << size << " from cache";
                 return ThumbnailData(thumbnailPath, QImage(), size);
             }
         }
