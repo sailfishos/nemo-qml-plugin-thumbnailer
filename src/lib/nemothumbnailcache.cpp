@@ -63,13 +63,16 @@ bool acceptableUnboundedSize(const QSize &requestedSize, bool crop, unsigned siz
 unsigned selectUnboundedSize(const QSize &requestedSize, unsigned screenWidth, unsigned screenHeight, bool crop)
 {
     // Prefer a thumbnail size at least as large as the requested size
-    const unsigned candidates[] = { NemoThumbnailCache::Small, NemoThumbnailCache::Medium, NemoThumbnailCache::Large, NemoThumbnailCache::ExtraLarge, screenWidth, screenHeight };
+    const unsigned candidates[] = { NemoThumbnailCache::Small, NemoThumbnailCache::Medium, NemoThumbnailCache::Large, NemoThumbnailCache::ExtraLarge, screenWidth};
     for (unsigned i = 0; i < lengthOf(candidates); ++i) {
         if (acceptableUnboundedSize(requestedSize, crop, candidates[i])) {
             return candidates[i];
         }
     }
-    return NemoThumbnailCache::None;
+    if (!acceptableUnboundedSize(requestedSize, crop, screenHeight)) {
+        qCWarning(thumbnailer) << Q_FUNC_INFO << "Invalid thumbnail size" << requestedSize << "requested; using:" << screenHeight;
+    }
+    return screenHeight;
 }
 
 bool acceptableBoundedSize(const QSize &requestedSize, unsigned size)
@@ -82,13 +85,16 @@ bool acceptableBoundedSize(const QSize &requestedSize, unsigned size)
 unsigned selectBoundedSize(const QSize &requestedSize, unsigned screenWidth, unsigned screenHeight)
 {
     // Select a size that does not exceed the requested size
-    const unsigned candidates[] = { screenHeight, screenWidth, NemoThumbnailCache::ExtraLarge, NemoThumbnailCache::Large, NemoThumbnailCache::Medium, NemoThumbnailCache::Small };
+    const unsigned candidates[] = { screenHeight, screenWidth, NemoThumbnailCache::ExtraLarge, NemoThumbnailCache::Large, NemoThumbnailCache::Medium };
     for (unsigned i = 0; i < lengthOf(candidates); ++i) {
         if (acceptableBoundedSize(requestedSize, candidates[i])) {
             return candidates[i];
         }
     }
-    return NemoThumbnailCache::None;
+    if (!acceptableBoundedSize(requestedSize, NemoThumbnailCache::Small)) {
+        qCWarning(thumbnailer) << Q_FUNC_INFO << "Invalid thumbnail size" << requestedSize << "requested; using:" << NemoThumbnailCache::Small;
+    }
+    return NemoThumbnailCache::Small;
 }
 
 unsigned selectSize(const QSize &requestedSize, unsigned screenWidth, unsigned screenHeight, bool crop, bool unbounded)
