@@ -77,6 +77,38 @@ ThumbnailRequest::~ThumbnailRequest()
     }
 }
 
+/*!
+    \qmltype Thumbnail
+    \inqmlmodule org.nemomobile.thumbnailer
+    \brief Generates and displays a cached thumbnail of the source image or video.
+
+    Thumbnail element can be used instead of Qt Quick Image element for displaying
+    images and video thumbnails. Thumbnailer provides additional API for prioritising
+    requests and quering status of the thumbnail generation. Loaded thumbnails are
+    stored into a local disk cache, which speeds up subsquent loading of the thumbnails,
+    especially if the original source image or video was large.
+
+    \code
+    import QtQuick 2.0
+    import org.nemomobile.thumbnailer 1.0
+
+    Thumbnail {
+        source: "photo.jpg"
+        width: thumbnailWidth
+        height: thumbnailHeight
+        sourceSize.width: width
+        sourceSize.height: height
+        priority: {
+            if (visibleRangeStart <= index && index < visibleRangeEnd) {
+                return Thumbnail.HighPriority
+            } else {
+                return Thumbnail.LowPriority
+            }
+        }
+    }
+    \endcode
+*/
+
 NemoThumbnailItem::NemoThumbnailItem(QQuickItem *parent)
     : QQuickItem(parent)
     , m_loader(0)
@@ -101,6 +133,11 @@ void NemoThumbnailItem::componentComplete()
     updateThumbnail(true);
 }
 
+/*!
+    \qmlproperty url Thumbnail::source
+
+    Set the location of the image to \a source property, either as an absolute or relative url.
+*/
 QUrl NemoThumbnailItem::source() const
 {
     return m_source;
@@ -115,6 +152,12 @@ void NemoThumbnailItem::setSource(const QUrl &source)
     }
 }
 
+/*!
+    \qmlproperty string Thumbnail::mimeType
+
+    Mime type of the thumbnail, which helps the thumbnailer
+    detect the file type correctly.
+*/
 QString NemoThumbnailItem::mimeType() const
 {
     return m_mimeType;
@@ -129,6 +172,20 @@ void NemoThumbnailItem::setMimeType(const QString &mimeType)
     }
 }
 
+/*!
+    \qmlproperty NemoThumbnailItem::Priority Thumbnail::priority.
+
+    With priority system you can prioritise images currently visible
+    on the screen higher. For example it is good idea to prioritise currently
+    visible items when user is scrolling quickly through multiple large photos.
+
+    The \a priority parameter may be one of:
+    \list
+    \li Thumbnail.HighPriority
+    \li Thumbnail.NormalPriority
+    \li Thumbnail.LowPriority
+    \endlist
+*/
 NemoThumbnailItem::Priority NemoThumbnailItem::priority() const
 {
     return m_priority;
@@ -144,6 +201,12 @@ void NemoThumbnailItem::setPriority(Priority priority)
     }
 }
 
+/*!
+    \qmlproperty QSize Thumbnail::sourceSize
+
+    This property holds the actual width and height of the cached and displayed thumbnail.
+    The source size should always be defined.
+*/
 QSize NemoThumbnailItem::sourceSize() const
 {
     return m_sourceSize;
@@ -158,6 +221,17 @@ void NemoThumbnailItem::setSourceSize(const QSize &size)
     }
 }
 
+/*!
+    \qmlproperty enumeration Thumbnail::fillMode
+
+    Set this property to define what happens when the source image
+    has a different aspect ratio than the item.
+
+    \list
+    \li Thumbnail.PreserveAspectFit - the image is scaled uniformly to fit without cropping
+    \li Thumbnail.PreserveAspectCrop - the image is scaled uniformly to fill, cropping if necessary. This is the default behavior.
+    \endlist
+*/
 NemoThumbnailItem::FillMode NemoThumbnailItem::fillMode() const
 {
     return m_fillMode;
@@ -172,6 +246,17 @@ void NemoThumbnailItem::setFillMode(FillMode mode)
     }
 }
 
+/*!
+    \qmlproperty enumeration Thumbnail::status
+
+    This property holds the status of the thumbnail loading. It can be one of:
+    \list
+    \li Thumbnail.Null - no image has been set
+    \li Thumbnail.Ready - the thumbnail has been loaded
+    \li Thumbnail.Loading - the thumbnail is currently being loaded
+    \li Thumbnail.Error - an error occurred while generating the thumbnail
+    \endlist
+*/
 NemoThumbnailItem::Status NemoThumbnailItem::status() const
 {
     return m_request ? m_request->status : Null;

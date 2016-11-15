@@ -1,0 +1,30 @@
+project         = Nemo QML Plugin Thumbnailer
+description     = Nemo QML Plugin Thumbnailer Reference Documentation
+versionsym      =
+version         = 2.0
+url             = https://git.merproject.org/mer-core/nemo-qml-plugin-thumbnailer
+
+sourcedirs += src ../src
+
+qhp.projects = NemoQmlPluginThumbnailer
+
+qhp.NemoQmlPluginThumbnailer.file = nemo-qml-plugin-thumbnailer.qhp
+qhp.NemoQmlPluginThumbnailer.namespace = org.nemomobile.qml-plugin-thumbnailer.2.0
+qhp.NemoQmlPluginThumbnailer.virtualFolder = nemo-qml-plugin-thumbnailer
+qhp.NemoQmlPluginThumbnailer.indexTitle = Nemo QML Plugin Thumbnailer
+qhp.NemoQmlPluginThumbnailer.indexRoot =
+
+qhp.NemoQmlPluginThumbnailer.filterAttributes = nemo-qml-plugin-thumbnailer 2.0
+
+HTML.footer += \
+    "<div class=\"footer\">\n" \
+    "  <p><acronym title=\"Copyright\">&copy;</acronym> 2015 Jolla OY</p>\n" \
+    "  <p>All other trademarks are property of their respective owners.</p>\n" \
+    "  <p>\n" \
+    "    This document may be used under the terms of the " \
+    "    <a href=\"http://www.gnu.org/licenses/fdl.html\">GNU Free Documentation License version 1.3</a>" \
+    "    as published by the Free Software Foundation." \
+    "  </p>\n" \
+    "</div>\n"
+
+navigation.homepage = "Nemo QML Plugin Thumbnailer"

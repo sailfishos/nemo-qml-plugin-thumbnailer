@@ -1,0 +1,44 @@
+/*!
+\qmlmodule org.nemomobile.thumbnailer 1.0
+\contentspage
+\title Nemo QML Plugin Thumbnailer
+\brief Provides types for generating and displaying cached thumbnails from QML
+
+The Thumbnailer module provides API for enabling thumbnail caching of images and videos
+in your application. The thumbnail images are generated upon demand and cached on the
+disk for faster access.
+
+The simplest way to create thumbnails is to use Nemo thumbnail image provider:
+
+\code
+    import QtQuick 2.0
+    import org.nemomobile.thumbnailer 1.0
+
+    Image {
+        source: "image://nemoThumbnail/" + path
+        width: 100
+        height: 100
+        sourceSize.width: width
+        sourceSize.height: height
+    }
+\endcode
+
+For more control use the dedicated \l Thumbnail API.
+
+\code
+    import QtQuick 2.0
+    import org.nemomobile.thumbnailer 1.0
+
+    Thumbnail {
+        source: "photo.jpg"
+        width: 100
+        height: 100
+        sourceSize.width: width
+        sourceSize.height: height
+    }
+\endcode
+
+The Thumbnailer module includes the following types:
+
+*/
+
