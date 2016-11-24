@@ -11,6 +11,7 @@ BuildRequires:  pkgconfig(Qt5Gui)
 BuildRequires:  pkgconfig(Qt5Qml)
 BuildRequires:  pkgconfig(Qt5Quick)
 BuildRequires:  pkgconfig(mlite5)
+BuildRequires:  mer-qdoc-template
 BuildRequires:  oneshot
 %{_oneshot_requires_post}
 
@@ -25,6 +26,12 @@ Requires:   %{name} = %{version}-%{release}
 %description devel
 %{summary}.
 
+%package doc
+Summary:    Thumbnailer plugin documentation
+Group:      System/Libraries
+
+%description doc
+%{summary}.
 
 %prep
 %setup -q -n %{name}-%{version}
@@ -54,6 +61,11 @@ chmod +x %{buildroot}/%{_oneshotdir}/*
 %{_libdir}/libnemothumbnailer-qt5.prl
 %{_includedir}/nemothumbnailer-qt5/*.h
 %{_libdir}/pkgconfig/nemothumbnailer-qt5.pc
+
+%files doc
+%defattr(-,root,root,-)
+%dir %{_datadir}/doc/nemo-qml-plugin-thumbnailer
+%{_datadir}/doc/nemo-qml-plugin-thumbnailer/nemo-qml-plugin-thumbnailer.qch
 
 %post
 /sbin/ldconfig
