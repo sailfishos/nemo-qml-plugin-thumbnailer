@@ -318,11 +318,10 @@ void NemoThumbnailItem::itemChange(ItemChange change, const ItemChangeData &data
             m_request = 0;
         }
 
-        // Work-around QTBUG-57396 by delaying qmlAttachedPropertiesObject call
-        if (!qmlEngine(data.window)) {
+        createLoader(data.window);
+        if (!m_loader) {
+            // Work-around QTBUG-57396 by delaying qmlAttachedPropertiesObject call
             delayLoaderCreationTimer.start(0, this);
-        } else {
-            createLoader(data.window);
         }
     }
     QQuickItem::itemChange(change, data);
@@ -338,13 +337,12 @@ void NemoThumbnailItem::timerEvent(QTimerEvent* event)
 
 void NemoThumbnailItem::createLoader(QQuickWindow *window)
 {
-    if (m_loader) {
-        qWarning() << Q_FUNC_INFO << "Error two attempts of creating NemoThumbnailLoader for object" << this;
+    if (!m_loader) {
+        m_loader = window
+                ? qobject_cast<NemoThumbnailLoader *>(qmlAttachedPropertiesObject<NemoThumbnailItem>(window))
+                : 0;
+        updateThumbnail(true);
     }
-    m_loader = window
-            ? qobject_cast<NemoThumbnailLoader *>(qmlAttachedPropertiesObject<NemoThumbnailItem>(window))
-            : 0;
-    updateThumbnail(true);
 }
 
 NemoThumbnailLoader *NemoThumbnailItem::qmlAttachedProperties(QObject *object)
