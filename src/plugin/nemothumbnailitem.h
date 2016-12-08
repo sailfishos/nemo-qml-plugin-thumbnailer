@@ -38,6 +38,7 @@
 #include <QtCore/qwaitcondition.h>
 #include <QQuickItem>
 #include <QSGTexture>
+#include <QBasicTimer>
 
 #include "linkedlist.h"
 
@@ -113,7 +114,6 @@ public:
 
     LinkedListNode listNode;
 
-
 Q_SIGNALS:
     void sourceChanged();
     void mimeTypeChanged();
@@ -126,6 +126,8 @@ private:
     Q_DISABLE_COPY(NemoThumbnailItem)
 
     void updateThumbnail(bool identityChanged);
+    void timerEvent(QTimerEvent *event);
+    void createLoader(QQuickWindow *window);
 
     NemoThumbnailLoader *m_loader;
     ThumbnailRequest *m_request;
@@ -135,6 +137,7 @@ private:
     Priority m_priority;
     FillMode m_fillMode;
     bool m_imageChanged;
+    QBasicTimer delayLoaderCreationTimer;
 
     friend struct ThumbnailRequest;
     friend class NemoThumbnailLoader;
