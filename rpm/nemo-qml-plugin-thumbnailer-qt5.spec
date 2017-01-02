@@ -46,13 +46,23 @@ rm -rf %{buildroot}
 %qmake5_install
 chmod +x %{buildroot}/%{_oneshotdir}/*
 
+# org.nemomobile.thumbnailer legacy import
+mkdir -p %{buildroot}%{_libdir}/qt5/qml/org/nemomobile/thumbnailer/
+ln -sf %{_libdir}/qt5/qml/Nemo/Thumbnailer/libnemothumbnailer.so %{buildroot}%{_libdir}/qt5/qml/org/nemomobile/thumbnailer/
+sed 's/Nemo.Thumbnailer/org.nemomobile.thumbnailer/' < src/plugin/qmldir > %{buildroot}%{_libdir}/qt5/qml/org/nemomobile/thumbnailer/qmldir
 
 %files
 %defattr(-,root,root,-)
 %{_libdir}/libnemothumbnailer-qt5.so.*
+%dir %{_libdir}/qt5/qml/Nemo/Thumbnailer
+%{_libdir}/qt5/qml/Nemo/Thumbnailer/libnemothumbnailer.so
+%{_libdir}/qt5/qml/Nemo/Thumbnailer/qmldir
+%{_libdir}/qt5/qml/Nemo/Thumbnailer/plugins.qmltypes
+
+# org.nemomobile.thumbnailer legacy import
+%dir %{_libdir}/qt5/qml/org/nemomobile/thumbnailer
 %{_libdir}/qt5/qml/org/nemomobile/thumbnailer/libnemothumbnailer.so
 %{_libdir}/qt5/qml/org/nemomobile/thumbnailer/qmldir
-%{_libdir}/qt5/qml/org/nemomobile/thumbnailer/plugins.qmltypes
 %{_oneshotdir}/remove-obsolete-nemothumbs-cache-dir
 
 %files devel

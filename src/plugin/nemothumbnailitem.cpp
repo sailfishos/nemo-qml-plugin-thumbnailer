@@ -79,7 +79,7 @@ ThumbnailRequest::~ThumbnailRequest()
 
 /*!
     \qmltype Thumbnail
-    \inqmlmodule org.nemomobile.thumbnailer
+    \inqmlmodule Nemo.Thumbnailer
     \brief Generates and displays a cached thumbnail of the source image or video.
 
     Thumbnail element can be used instead of Qt Quick Image element for displaying
@@ -90,7 +90,7 @@ ThumbnailRequest::~ThumbnailRequest()
 
     \code
     import QtQuick 2.0
-    import org.nemomobile.thumbnailer 1.0
+    import Nemo.Thumbnailer 1.0
 
     Thumbnail {
         source: "photo.jpg"

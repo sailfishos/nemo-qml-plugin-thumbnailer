@@ -1,2 +1,2 @@
-module org.nemomobile.thumbnailer
+module Nemo.Thumbnailer
 plugin nemothumbnailer

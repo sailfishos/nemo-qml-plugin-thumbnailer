@@ -12,7 +12,7 @@ HEADERS += \
     nemoimagemetadata.h \
     nemothumbnailcache.h
 
-PLUGIN_IMPORT_PATH = $$[QT_INSTALL_QML]/org/nemomobile/thumbnailer
+PLUGIN_IMPORT_PATH = $$[QT_INSTALL_QML]/Nemo/Thumbnailer
 DEFINES += NEMO_THUMBNAILER_DIR=\\\"$$PLUGIN_IMPORT_PATH/thumbnailers\\\"
 
 target.path = $$[QT_INSTALL_LIBS]
