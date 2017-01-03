@@ -1,6 +1,6 @@
 Name:       nemo-qml-plugin-thumbnailer-qt5
 Summary:    Thumbnail provider plugin for Nemo Mobile
-Version:    0.0.0
+Version:    0.3.3
 Release:    1
 Group:      System/Libraries
 License:    BSD
