@@ -1,5 +1,5 @@
 TARGET = nemothumbnailer
-PLUGIN_IMPORT_PATH = org/nemomobile/thumbnailer
+PLUGIN_IMPORT_PATH = Nemo/Thumbnailer
 
 TEMPLATE = lib
 CONFIG += qt plugin hide_symbols c++11 link_pkgconfig

@@ -40,21 +40,20 @@
 class Q_DECL_EXPORT NemoThumbnailerPlugin : public QQmlExtensionPlugin
 {
     Q_OBJECT
-    Q_PLUGIN_METADATA(IID "org.nemomobile.thumbnailer")
+    Q_PLUGIN_METADATA(IID "Nemo.Thumbnailer")
 
 public:
     virtual ~NemoThumbnailerPlugin() { }
 
     void initializeEngine(QQmlEngine *engine, const char *uri)
     {
-        Q_ASSERT(uri == QLatin1String("org.nemomobile.thumbnailer"));
+        Q_ASSERT(uri == QLatin1String("Nemo.Thumbnailer") || uri == QLatin1String("org.nemomobile.thumbnailer"));
         engine->addImageProvider(QLatin1String("nemoThumbnail"), new NemoThumbnailProvider);
     }
 
     void registerTypes(const char *uri)
     {
-        Q_ASSERT(uri == QLatin1String("org.nemomobile.thumbnailer"));
-
+        Q_ASSERT(uri == QLatin1String("Nemo.Thumbnailer") || uri == QLatin1String("org.nemomobile.thumbnailer"));
         qmlRegisterType<NemoThumbnailItem>(uri, 1, 0, "Thumbnail");
     }
 };

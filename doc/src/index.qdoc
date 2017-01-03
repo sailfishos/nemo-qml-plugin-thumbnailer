@@ -1,5 +1,5 @@
 /*!
-\qmlmodule org.nemomobile.thumbnailer 1.0
+\qmlmodule Nemo.Thumbnailer 1.0
 \contentspage
 \title Nemo QML Plugin Thumbnailer
 \brief Provides types for generating and displaying cached thumbnails from QML
@@ -12,7 +12,7 @@ The simplest way to create thumbnails is to use Nemo thumbnail image provider:
 
 \code
     import QtQuick 2.0
-    import org.nemomobile.thumbnailer 1.0
+    import Nemo.Thumbnailer 1.0
 
     Image {
         source: "image://nemoThumbnail/" + path
@@ -27,7 +27,7 @@ For more control use the dedicated \l Thumbnail API.
 
 \code
     import QtQuick 2.0
-    import org.nemomobile.thumbnailer 1.0
+    import Nemo.Thumbnailer 1.0
 
     Thumbnail {
         source: "photo.jpg"
