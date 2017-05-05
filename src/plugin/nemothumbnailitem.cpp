@@ -356,7 +356,8 @@ NemoThumbnailLoader *NemoThumbnailItem::qmlAttachedProperties(QObject *object)
 
 
 NemoThumbnailLoader::NemoThumbnailLoader(QQuickWindow *window)
-    : m_window(window)
+    : QThread(window)
+    , m_window(window)
     , m_totalCost(0)
     , m_maxCost(thumbnailerMaxCost())
     , m_quit(false)
