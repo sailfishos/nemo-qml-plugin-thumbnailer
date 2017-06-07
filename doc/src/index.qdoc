@@ -1,6 +1,13 @@
 /*!
 \qmlmodule Nemo.Thumbnailer 1.0
-\contentspage
+\title Nemo.Thumbnailer QML Types
+
+This module includes the following types:
+
+*/
+
+/*!
+\page index.html
 \title Nemo QML Plugin Thumbnailer
 \brief Provides types for generating and displaying cached thumbnails from QML
 
@@ -39,6 +46,8 @@ For more control use the dedicated \l Thumbnail API.
 \endcode
 
 The Thumbnailer module includes the following types:
+
+\generatelist{qmltypesbymodule Nemo.Thumbnailer}
 
 */
 

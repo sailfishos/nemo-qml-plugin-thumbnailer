@@ -16,6 +16,12 @@ qhp.NemoQmlPluginThumbnailer.indexRoot =
 
 qhp.NemoQmlPluginThumbnailer.filterAttributes = nemo-qml-plugin-thumbnailer 2.0
 
+qhp.NemoQmlPluginThumbnailer.subprojects = qmltypes
+qhp.NemoQmlPluginThumbnailer.subprojects.qmltypes.title = QML Types
+qhp.NemoQmlPluginThumbnailer.subprojects.qmltypes.indexTitle = Nemo.Thumbnailer QML Types
+qhp.NemoQmlPluginThumbnailer.subprojects.qmltypes.selectors = qmlclass
+qhp.NemoQmlPluginThumbnailer.subprojects.qmltypes.sortPages = true
+
 HTML.footer += \
     "<div class=\"footer\">\n" \
     "  <p><acronym title=\"Copyright\">&copy;</acronym> 2015 Jolla OY</p>\n" \
