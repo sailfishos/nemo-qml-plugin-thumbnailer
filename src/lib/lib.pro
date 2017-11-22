@@ -3,7 +3,13 @@ TARGET = nemothumbnailer-qt5
 
 CONFIG += qt hide_symbols create_pc create_prl c++11 link_pkgconfig
 
-PKGCONFIG += mlite5
+packagesExist(mlite5) {
+    message("Building with mlite5 support")
+    PKGCONFIG += mlite5
+    DEFINES += HAS_MLITE5
+} else {
+    warning("mlite5 not available;")
+}
 
 SOURCES += \
     nemoimagemetadata.cpp \

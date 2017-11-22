@@ -5,8 +5,6 @@ TEMPLATE = lib
 CONFIG += qt plugin hide_symbols c++11 link_pkgconfig
 QT += qml quick
 
-PKGCONFIG += mlite5
-
 INCLUDEPATH += ../lib
 LIBS += -L../lib -lnemothumbnailer-qt5
 

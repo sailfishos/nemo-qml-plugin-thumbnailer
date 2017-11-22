@@ -43,7 +43,9 @@
 #include <QtEndian>
 #include <QElapsedTimer>
 #include <QLoggingCategory>
+#ifdef HAS_MLITE5
 #include <MGConfItem>
+#endif
 #include <QStandardPaths>
 #include <QProcess>
 
@@ -483,8 +485,13 @@ QImage NemoThumbnailCache::ThumbnailData::getScaledImage(const QSize &requestedS
 }
 
 NemoThumbnailCache::NemoThumbnailCache()
+#ifdef HAS_MLITE5
     : screenWidth_(MGConfItem(QStringLiteral("/lipstick/screen/primary/width")).value(540).toInt())
     , screenHeight_(MGConfItem(QStringLiteral("/lipstick/screen/primary/height")).value(960).toInt())
+#else
+    : screenWidth_(540)
+    , screenHeight_(960)
+#endif
 {
     if (screenWidth_ > screenHeight_) {
         std::swap(screenWidth_, screenHeight_);
