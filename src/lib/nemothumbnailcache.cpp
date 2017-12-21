@@ -47,7 +47,7 @@
 #include <QStandardPaths>
 #include <QProcess>
 
-Q_LOGGING_CATEGORY(thumbnailer, "Nemo.Thumbnailer")
+Q_LOGGING_CATEGORY(thumbnailer, "Nemo.Thumbnailer", QtWarningMsg)
 
 namespace {
 
@@ -362,7 +362,7 @@ NemoThumbnailCache::ThumbnailData generateImageThumbnail(const QString &path, co
         return NemoThumbnailCache::ThumbnailData(thumbnailPath, img, requestedSize);
     }
 
-    qCWarning(thumbnailer) << Q_FUNC_INFO << "Could not generateImageThumbnail:" << path << requestedSize << crop;
+    qCDebug(thumbnailer) << Q_FUNC_INFO << "Could not generateImageThumbnail:" << path << requestedSize << crop;
     return NemoThumbnailCache::ThumbnailData();
 }
 
