@@ -612,6 +612,11 @@ void NemoThumbnailLoader::run()
             NemoThumbnailCache::ThumbnailData thumbnail = NemoThumbnailCache::instance()->existingThumbnail(fileName, requestedSize, crop);
             QImage image = thumbnail.getScaledImage(requestedSize, crop);
 
+            static const bool rgba8888Images = qEnvironmentVariableIsSet("QT_OPENGL_NO_BGRA");
+            if (rgba8888Images) {
+                image = image.convertToFormat(QImage::Format_RGBA8888_Premultiplied);
+            }
+
             locker.relock();
             request->loading = false;
 
