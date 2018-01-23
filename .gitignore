@@ -1,0 +1,10 @@
+*.o
+*.so*
+*.pc
+*.prl
+*.moc
+*.pro.user
+moc_*
+.qmake.stash
+Makefile
+documentation.list
