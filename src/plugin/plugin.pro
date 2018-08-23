@@ -11,13 +11,12 @@ LIBS += -L../lib -lnemothumbnailer-qt5
 target.path = $$[QT_INSTALL_QML]/$$PLUGIN_IMPORT_PATH
 INSTALLS += target
 
-qmldir.files += $$_PRO_FILE_PWD_/qmldir
+qmldir.files += qmldir plugins.qmltypes
 qmldir.path +=  $$target.path
 INSTALLS += qmldir
 
-qmltypes.files += $$_PRO_FILE_PWD_/plugins.qmltypes
-qmltypes.path +=  $$target.path
-INSTALLS += qmltypes
+qmltypes.commands = qmlplugindump -nonrelocatable Nemo.Thumbnailer 1.0 > $$PWD/plugins.qmltypes
+QMAKE_EXTRA_TARGETS += qmltypes
 
 SOURCES += plugin.cpp \
            nemothumbnailprovider.cpp \
