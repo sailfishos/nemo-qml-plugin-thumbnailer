@@ -36,6 +36,10 @@
 #include <QSize>
 #include <QString>
 
+QT_BEGIN_NAMESPACE
+class QImageReader;
+QT_END_NAMESPACE
+
 class Q_DECL_EXPORT NemoThumbnailCache
 {
 public:
@@ -75,9 +79,21 @@ public:
 
     ThumbnailData existingThumbnail(const QString &path, const QSize &requestedSize, bool crop, bool unbounded = true) const;
 
-private:
-    NemoThumbnailCache();
+protected:
+    NemoThumbnailCache(const QString &cachePath);
+    virtual ~NemoThumbnailCache();
 
+    virtual ThumbnailData generateThumbnail(const QString &path, const QByteArray &key, int size, bool crop, const QString &mimeType);
+    QString writeCacheFile(const QByteArray &key, const QImage &image);
+
+    static QImage readImageThumbnail(
+            QImageReader *reader, const QSize requestedSize, bool crop, Qt::TransformationMode mode);
+
+private:
+    inline NemoThumbnailCache::ThumbnailData generateImageThumbnail(
+            const QString &path, const QByteArray &key, const int requestedSize, bool crop);
+
+    const QString cachePath_;
     unsigned screenWidth_;
     unsigned screenHeight_;
 };
