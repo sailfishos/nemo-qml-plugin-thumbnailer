@@ -22,8 +22,6 @@ PLUGIN_IMPORT_PATH = $$[QT_INSTALL_QML]/Nemo/Thumbnailer
 DEFINES += NEMO_THUMBNAILER_DIR=\\\"$$PLUGIN_IMPORT_PATH/thumbnailers\\\"
 
 target.path = $$[QT_INSTALL_LIBS]
-pkgconfig.files = $$TARGET.pc
-pkgconfig.path = $$target.path/pkgconfig
 headers.path = /usr/include/nemothumbnailer-qt5
 headers.files =\
     nemothumbnailcache.h \
@@ -34,5 +32,6 @@ QMAKE_PKGCONFIG_DESCRIPTION = Library for generating and accessing thumbnail ima
 QMAKE_PKGCONFIG_LIBDIR = $$target.path
 QMAKE_PKGCONFIG_INCDIR = $$headers.path
 QMAKE_PKGCONFIG_DESTDIR = pkgconfig
+QMAKE_PKGCONFIG_VERSION = $$VERSION
 
-INSTALLS += target headers pkgconfig
+INSTALLS += target headers
