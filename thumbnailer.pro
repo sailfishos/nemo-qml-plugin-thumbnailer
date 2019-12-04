@@ -1,5 +1,5 @@
 TEMPLATE = subdirs
-SUBDIRS = src oneshot
+SUBDIRS = src
 CONFIG += mer-qdoc-template
 MER_QDOC.project = nemo-qml-plugin-thumbnailer
 MER_QDOC.config = doc/nemo-qml-plugin-thumbnailer.qdocconf

@@ -12,8 +12,6 @@ BuildRequires:  pkgconfig(Qt5Qml)
 BuildRequires:  pkgconfig(Qt5Quick)
 BuildRequires:  pkgconfig(mlite5)
 BuildRequires:  mer-qdoc-template
-BuildRequires:  oneshot
-%{_oneshot_requires_post}
 
 %description
 %{summary}.
@@ -44,7 +42,6 @@ make %{?_smp_mflags}
 %install
 rm -rf %{buildroot}
 %qmake5_install
-chmod +x %{buildroot}/%{_oneshotdir}/*
 
 # org.nemomobile.thumbnailer legacy import
 mkdir -p %{buildroot}%{_libdir}/qt5/qml/org/nemomobile/thumbnailer/
@@ -63,7 +60,6 @@ sed 's/Nemo.Thumbnailer/org.nemomobile.thumbnailer/' < src/plugin/qmldir > %{bui
 %dir %{_libdir}/qt5/qml/org/nemomobile/thumbnailer
 %{_libdir}/qt5/qml/org/nemomobile/thumbnailer/libnemothumbnailer.so
 %{_libdir}/qt5/qml/org/nemomobile/thumbnailer/qmldir
-%{_oneshotdir}/remove-obsolete-nemothumbs-cache-dir
 
 %files devel
 %defattr(-,root,root,-)
@@ -77,9 +73,6 @@ sed 's/Nemo.Thumbnailer/org.nemomobile.thumbnailer/' < src/plugin/qmldir > %{bui
 %dir %{_datadir}/doc/nemo-qml-plugin-thumbnailer
 %{_datadir}/doc/nemo-qml-plugin-thumbnailer/nemo-qml-plugin-thumbnailer.qch
 
-%post
-/sbin/ldconfig
-%{_bindir}/add-oneshot --now remove-obsolete-nemothumbs-cache-dir
+%post -p /sbin/ldconfig
 
 %postun -p /sbin/ldconfig
-
