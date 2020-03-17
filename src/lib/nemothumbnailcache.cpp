@@ -48,6 +48,8 @@
 #include <QProcess>
 #include <QThreadStorage>
 
+#include <QtGui/private/qimage_p.h>
+
 Q_LOGGING_CATEGORY(thumbnailer, "Nemo.Thumbnailer", QtWarningMsg)
 
 namespace {
@@ -242,6 +244,27 @@ NemoThumbnailCache::ThumbnailData generatePdfThumbnail(const QString &thumbnails
     return NemoThumbnailCache::ThumbnailData();
 }
 
+class ConversionImage : public QImage
+{
+public:
+    using QImage::convertToFormat_inplace;
+};
+
+void convertImageToFormat(QImage *image, QImage::Format format)
+{
+    if (!static_cast<ConversionImage *>(image)->convertToFormat_inplace(format, Qt::AutoColor)) {
+        *image = image->convertToFormat(format);
+    }
+}
+
+void optimizeImageForTexture(QImage *image)
+{
+    if (image->hasAlphaChannel()) {
+        convertImageToFormat(image, QImage::Format_RGBA8888_Premultiplied);
+    } else {
+        convertImageToFormat(image, QImage::Format_RGBX8888);
+    }
+}
 
 class NemoThumbnailCacheInstance : public NemoThumbnailCache
 {
@@ -300,7 +323,11 @@ QImage NemoThumbnailCache::ThumbnailData::getScaledImage(const QSize &requestedS
     } else if (!path_.isEmpty()) {
         QImageReader reader(path_);
 
-        return readImageThumbnail(&reader, requestedSize, crop, mode);
+        QImage image = readImageThumbnail(&reader, requestedSize, crop, mode);
+
+        optimizeImageForTexture(&image);
+
+        return image;
     } else {
         return QImage();
     }
@@ -407,8 +434,14 @@ NemoThumbnailCache::ThumbnailData NemoThumbnailCache::generateImageThumbnail(con
         QImage img = readImageThumbnail(
                     &ir, QSize(requestedSize, requestedSize), crop, Qt::FastTransformation);
 
+        if (img.data_ptr() && !img.data_ptr()->checkForAlphaPixels()) {
+            convertImageToFormat(&img, QImage::Format_RGB32);
+        }
+
         // write the scaled image to cache
         QString thumbnailPath = writeCacheFile(key, img);
+
+        optimizeImageForTexture(&img);
 
         return NemoThumbnailCache::ThumbnailData(thumbnailPath, img, requestedSize);
     }
