@@ -3,6 +3,9 @@ TARGET = nemothumbnailer-qt5
 
 CONFIG += qt hide_symbols create_pc create_prl c++11 link_pkgconfig
 
+QT += \
+    gui-private
+
 packagesExist(mlite5) {
     message("Building with mlite5 support")
     PKGCONFIG += mlite5
