@@ -167,6 +167,7 @@ struct ThumbnailRequest
     NemoThumbnailItem::Priority priority;
     bool loading;
     bool loaded;
+    uint cacheCost;
 };
 
 typedef LinkedList<ThumbnailRequest, &ThumbnailRequest::listNode> ThumbnailRequestList;

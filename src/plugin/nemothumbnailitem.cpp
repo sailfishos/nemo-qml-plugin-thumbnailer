@@ -67,6 +67,7 @@ ThumbnailRequest::ThumbnailRequest(NemoThumbnailItem *item, const QString &fileN
     , priority(NemoThumbnailItem::Unprioritized)
     , loading(false)
     , loaded(false)
+    , cacheCost(0)
 {
 }
 
@@ -458,8 +459,14 @@ void NemoThumbnailLoader::updateRequest(NemoThumbnailItem *item, bool identityCh
         if (it->items.isEmpty()) {
             ThumbnailRequest *cachedRequest = it;
             it = m_cachedRequests.erase(it);
-            m_totalCost -= cachedRequest->pixmap.width() * cachedRequest->pixmap.height();
+            m_totalCost -= cachedRequest->cacheCost;
             m_requestCache.remove(cachedRequest->cacheKey);
+
+            if (cachedRequest == previousRequest) {
+                // Avoid dangling pointer if previous request is purged from cache
+                previousRequest = nullptr;
+            }
+
             delete cachedRequest;
         } else {
             ++it;
@@ -543,7 +550,10 @@ bool NemoThumbnailLoader::event(QEvent *event)
                 request->image = QImage();
                 request->status = NemoThumbnailItem::Ready;
 
-                m_totalCost += implicitSize.width() * implicitSize.height();
+                // Store the cache cost associated with request as pixmap may get freed
+                // if it is loaded into texture
+                request->cacheCost = implicitSize.width() * implicitSize.height();
+                m_totalCost += request->cacheCost;
             } else {
                 request->pixmap = QImage();
                 request->image = QImage();
