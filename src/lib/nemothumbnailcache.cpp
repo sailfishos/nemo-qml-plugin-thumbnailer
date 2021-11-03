@@ -33,6 +33,7 @@
 
 #include <QLibrary>
 #include <QFile>
+#include <QUrl>
 #include <QCryptographicHash>
 #include <QDebug>
 #include <QDir>
@@ -178,11 +179,11 @@ QString attemptCachedServe(const QString &thumbnailsCachePath, const QString &id
 
 QString imagePath(const QString &uri)
 {
-    QString path(uri);
-    if (path.startsWith("file://")) {
-        path = path.mid(7);
+    if (uri.startsWith("file://")) {
+        return QUrl(uri).toLocalFile();
+    } else {
+        return uri;
     }
-    return path;
 }
 
 QImage scaleImage(const QImage &image, const QSize &requestedSize, bool crop, Qt::TransformationMode mode)
