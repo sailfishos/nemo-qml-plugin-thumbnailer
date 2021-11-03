@@ -58,27 +58,23 @@ class NemoThumbnailItem : public QQuickItem
     Q_ENUMS(Status)
     Q_ENUMS(FillMode)
 public:
-    enum FillMode
-    {
+    enum FillMode {
         PreserveAspectFit = 1,  // Use the same values as Image for compatibility.
         PreserveAspectCrop
     };
 
-    enum Priority
-    {
+    enum Priority {
         HighPriority,
         NormalPriority,
         LowPriority,
         Unprioritized
     };
 
-    enum
-    {
+    enum {
         PriorityCount = 3
     };
 
-    enum Status
-    {
+    enum Status {
         Null,
         Ready,
         Loading,

@@ -362,7 +362,8 @@ NemoThumbnailCache *NemoThumbnailCache::instance()
     return &cacheInstance.localData();
 }
 
-NemoThumbnailCache::ThumbnailData NemoThumbnailCache::requestThumbnail(const QString &uri, const QSize &requestedSize, bool crop, bool unbounded, const QString &mimeType)
+NemoThumbnailCache::ThumbnailData NemoThumbnailCache::requestThumbnail(const QString &uri, const QSize &requestedSize,
+                                                                       bool crop, bool unbounded, const QString &mimeType)
 {
     const QString path(imagePath(uri));
     if (!path.isEmpty()) {
@@ -383,7 +384,8 @@ NemoThumbnailCache::ThumbnailData NemoThumbnailCache::requestThumbnail(const QSt
     return ThumbnailData();
 }
 
-NemoThumbnailCache::ThumbnailData NemoThumbnailCache::existingThumbnail(const QString &uri, const QSize &requestedSize, bool crop, bool unbounded) const
+NemoThumbnailCache::ThumbnailData NemoThumbnailCache::existingThumbnail(const QString &uri, const QSize &requestedSize,
+                                                                        bool crop, bool unbounded) const
 {
     const QString path(imagePath(uri));
     if (!path.isEmpty()) {

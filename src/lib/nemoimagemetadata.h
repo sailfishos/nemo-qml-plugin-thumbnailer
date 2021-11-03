@@ -53,11 +53,8 @@ public:
     };
 
     NemoImageMetadata();
-
     NemoImageMetadata(const QString &filename, const QByteArray &format);
-
     NemoImageMetadata(const NemoImageMetadata &other);
-
     ~NemoImageMetadata();
 
     NemoImageMetadata &operator=(const NemoImageMetadata &other);
@@ -67,9 +64,7 @@ public:
     }
 
 private:
-
     Orientation m_orientation;
-
 };
 
 Q_DECLARE_METATYPE(NemoImageMetadata)
