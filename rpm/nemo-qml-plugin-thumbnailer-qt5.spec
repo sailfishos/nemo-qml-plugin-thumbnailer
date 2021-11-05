@@ -2,23 +2,21 @@ Name:       nemo-qml-plugin-thumbnailer-qt5
 Summary:    Thumbnail provider plugin for Nemo Mobile
 Version:    1.0.0
 Release:    1
-Group:      System/Libraries
 License:    BSD
-URL:        https://git.merproject.org/mer-core/nemo-qml-plugin-thumbnailer
+URL:        https://github.com/sailfishos/nemo-qml-plugin-thumbnailer
 Source0:    %{name}-%{version}.tar.bz2
 BuildRequires:  pkgconfig(Qt5Core)
 BuildRequires:  pkgconfig(Qt5Gui)
 BuildRequires:  pkgconfig(Qt5Qml)
 BuildRequires:  pkgconfig(Qt5Quick)
 BuildRequires:  pkgconfig(mlite5)
-BuildRequires:  mer-qdoc-template
+BuildRequires:  sailfish-qdoc-template
 
 %description
 %{summary}.
 
 %package devel
 Summary:    Thumbnail support for C++ applications
-Group:      System/Libraries
 Requires:   %{name} = %{version}-%{release}
 
 %description devel
@@ -26,7 +24,6 @@ Requires:   %{name} = %{version}-%{release}
 
 %package doc
 Summary:    Thumbnailer plugin documentation
-Group:      System/Libraries
 
 %description doc
 %{summary}.
