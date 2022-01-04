@@ -47,6 +47,7 @@ sed 's/Nemo.Thumbnailer/org.nemomobile.thumbnailer/' < src/plugin/qmldir > %{bui
 
 %files
 %defattr(-,root,root,-)
+%license LICENSE.BSD
 %{_libdir}/libnemothumbnailer-qt5.so.*
 %dir %{_libdir}/qt5/qml/Nemo/Thumbnailer
 %{_libdir}/qt5/qml/Nemo/Thumbnailer/libnemothumbnailer.so
