@@ -1,6 +1,6 @@
 Name:       nemo-qml-plugin-thumbnailer-qt5
 Summary:    Thumbnail provider plugin for Nemo Mobile
-Version:    1.0.0
+Version:    1.0.7
 Release:    1
 License:    BSD
 URL:        https://github.com/sailfishos/nemo-qml-plugin-thumbnailer
@@ -11,6 +11,10 @@ BuildRequires:  pkgconfig(Qt5Qml)
 BuildRequires:  pkgconfig(Qt5Quick)
 BuildRequires:  pkgconfig(mlite5)
 BuildRequires:  sailfish-qdoc-template
+Requires: thumbnaild
+Provides: nemo-qml-plugin-thumbnailer-qt5-video
+Obsoletes: nemo-qml-plugin-thumbnailer-qt5-libav < 0.1.0
+Conflicts: nemo-qml-plugin-thumbnailer-qt5-libav
 
 %description
 %{summary}.
