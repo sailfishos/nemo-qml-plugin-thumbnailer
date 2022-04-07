@@ -370,7 +370,6 @@ NemoThumbnailLoader::NemoThumbnailLoader(QQuickWindow *window)
     connect(window, &QQuickWindow::sceneGraphInvalidated,
                 this, &NemoThumbnailLoader::destroyTextures,
                 Qt::DirectConnection);
-    start();
 }
 
 NemoThumbnailLoader::~NemoThumbnailLoader()
@@ -483,6 +482,8 @@ void NemoThumbnailLoader::updateRequest(NemoThumbnailItem *item, bool identityCh
     prioritizeRequest(item->m_request);
 
     m_waitCondition.wakeOne();
+
+    start();
 }
 
 void NemoThumbnailLoader::cancelRequest(NemoThumbnailItem *item)
