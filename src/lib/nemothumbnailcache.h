@@ -32,6 +32,8 @@
 #ifndef NEMOTHUMBNAILCACHE_H
 #define NEMOTHUMBNAILCACHE_H
 
+#include <nemothumbnailexports.h>
+
 #include <QImage>
 #include <QSize>
 #include <QString>
@@ -40,7 +42,7 @@ QT_BEGIN_NAMESPACE
 class QImageReader;
 QT_END_NAMESPACE
 
-class Q_DECL_EXPORT NemoThumbnailCache
+class NEMO_QML_PLUGIN_THUMBNAILER_EXPORT NemoThumbnailCache
 {
 public:
     enum {
