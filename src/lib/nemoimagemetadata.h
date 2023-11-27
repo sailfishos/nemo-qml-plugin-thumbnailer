@@ -35,9 +35,11 @@
 class QString;
 class QByteArray;
 
+#include <nemothumbnailexports.h>
+
 #include <QMetaType>
 
-class Q_DECL_EXPORT NemoImageMetadata
+class NEMO_QML_PLUGIN_THUMBNAILER_EXPORT NemoImageMetadata
 {
 public:
 

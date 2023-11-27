@@ -29,7 +29,6 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE."
  */
 
-#include "nemothumbnailcache.h"
 
 #include <QLibrary>
 #include <QFile>
@@ -50,6 +49,8 @@
 #include <QThreadStorage>
 
 #include <QtGui/private/qimage_p.h>
+
+#include "nemothumbnailcache.h"
 
 Q_LOGGING_CATEGORY(thumbnailer, "Nemo.Thumbnailer", QtWarningMsg)
 
