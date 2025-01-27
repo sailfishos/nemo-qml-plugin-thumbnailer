@@ -54,6 +54,7 @@ int thumbnailerMaxCost()
     return ok ? cost : 1360 * 768 * 3;
 }
 
+int MaximumSaneSize = 10000;
 }
 
 ThumbnailRequest::ThumbnailRequest(NemoThumbnailItem *item, const QString &fileName, uint cacheKey)
@@ -302,7 +303,13 @@ void NemoThumbnailItem::updateThumbnail(bool identityChanged)
 
     Status status = m_request ? m_request->status : Null;
 
-    if (m_source.isLocalFile() && !m_sourceSize.isEmpty())
+    bool valid = m_source.isLocalFile() && !m_sourceSize.isEmpty();
+    if (valid && (m_sourceSize.width() > MaximumSaneSize || m_sourceSize.height() > MaximumSaneSize)) {
+        qDebug() << "Thumbnail source size too big, ignoring update. Size:" << m_sourceSize;
+        valid = false;
+    }
+
+    if (valid)
         m_loader->updateRequest(this, identityChanged);
     else if (m_request)
         m_loader->cancelRequest(this);
