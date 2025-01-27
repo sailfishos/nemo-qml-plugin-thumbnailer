@@ -426,7 +426,10 @@ void NemoThumbnailLoader::updateRequest(NemoThumbnailItem *item, bool identityCh
         const bool crop = item->m_fillMode == NemoThumbnailItem::PreserveAspectCrop;
 
         // Create an identifier for this request's data
-        const uint cacheKey = qHash(crop) ^ qHash(item->m_sourceSize.width()) ^ qHash(item->m_sourceSize.height()) ^ qHash(fileName);
+        const uint cacheKey = qHash(crop)
+                ^ qHash(item->m_sourceSize.width())
+                ^ qHash(item->m_sourceSize.height())
+                ^ qHash(fileName);
 
         item->m_request = m_requestCache.value(cacheKey);
 
@@ -620,7 +623,8 @@ void NemoThumbnailLoader::run()
         locker.unlock();
 
         if (tryCache) {
-            NemoThumbnailCache::ThumbnailData thumbnail = NemoThumbnailCache::instance()->existingThumbnail(fileName, requestedSize, crop);
+            NemoThumbnailCache::ThumbnailData thumbnail
+                    = NemoThumbnailCache::instance()->existingThumbnail(fileName, requestedSize, crop);
             QImage image = thumbnail.getScaledImage(requestedSize, crop);
 
             locker.relock();
@@ -639,7 +643,8 @@ void NemoThumbnailLoader::run()
                 lists[request->priority]->append(request);
             }
         } else {
-            NemoThumbnailCache::ThumbnailData thumbnail = NemoThumbnailCache::instance()->requestThumbnail(fileName, requestedSize, crop, true, mimeType);
+            NemoThumbnailCache::ThumbnailData thumbnail
+                    = NemoThumbnailCache::instance()->requestThumbnail(fileName, requestedSize, crop, true, mimeType);
             QImage image = thumbnail.getScaledImage(requestedSize, crop);
 
             locker.relock();

@@ -42,7 +42,6 @@ class QByteArray;
 class NEMO_QML_PLUGIN_THUMBNAILER_EXPORT NemoImageMetadata
 {
 public:
-
     enum Orientation {
         TopLeft = 1,
         TopRight,
