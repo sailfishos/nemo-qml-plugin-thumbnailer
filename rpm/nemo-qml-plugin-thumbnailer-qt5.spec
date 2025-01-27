@@ -13,8 +13,6 @@ BuildRequires:  pkgconfig(mlite5)
 BuildRequires:  sailfish-qdoc-template
 Requires: thumbnaild
 Provides: nemo-qml-plugin-thumbnailer-qt5-video
-Obsoletes: nemo-qml-plugin-thumbnailer-qt5-libav < 0.1.0
-Conflicts: nemo-qml-plugin-thumbnailer-qt5-libav
 
 %description
 %{summary}.
@@ -37,11 +35,9 @@ Summary:    Thumbnailer plugin documentation
 
 %build
 %qmake5 "VERSION=%{version}"
-make %{?_smp_mflags}
-
+%make_build
 
 %install
-rm -rf %{buildroot}
 %qmake5_install
 
 # org.nemomobile.thumbnailer legacy import
@@ -49,8 +45,11 @@ mkdir -p %{buildroot}%{_libdir}/qt5/qml/org/nemomobile/thumbnailer/
 ln -sf %{_libdir}/qt5/qml/Nemo/Thumbnailer/libnemothumbnailer.so %{buildroot}%{_libdir}/qt5/qml/org/nemomobile/thumbnailer/
 sed 's/Nemo.Thumbnailer/org.nemomobile.thumbnailer/' < src/plugin/qmldir > %{buildroot}%{_libdir}/qt5/qml/org/nemomobile/thumbnailer/qmldir
 
+%post -p /sbin/ldconfig
+
+%postun -p /sbin/ldconfig
+
 %files
-%defattr(-,root,root,-)
 %license LICENSE.BSD
 %{_libdir}/libnemothumbnailer-qt5.so.*
 %dir %{_libdir}/qt5/qml/Nemo/Thumbnailer
@@ -64,17 +63,11 @@ sed 's/Nemo.Thumbnailer/org.nemomobile.thumbnailer/' < src/plugin/qmldir > %{bui
 %{_libdir}/qt5/qml/org/nemomobile/thumbnailer/qmldir
 
 %files devel
-%defattr(-,root,root,-)
 %{_libdir}/libnemothumbnailer-qt5.so
 %{_libdir}/libnemothumbnailer-qt5.prl
 %{_includedir}/nemothumbnailer-qt5/*.h
 %{_libdir}/pkgconfig/nemothumbnailer-qt5.pc
 
 %files doc
-%defattr(-,root,root,-)
 %dir %{_datadir}/doc/nemo-qml-plugin-thumbnailer
 %{_datadir}/doc/nemo-qml-plugin-thumbnailer/nemo-qml-plugin-thumbnailer.qch
-
-%post -p /sbin/ldconfig
-
-%postun -p /sbin/ldconfig
