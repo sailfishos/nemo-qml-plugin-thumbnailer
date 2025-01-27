@@ -348,6 +348,8 @@ QImage NemoThumbnailCache::ThumbnailData::getScaledImage(const QSize &requestedS
     }
 }
 
+static unsigned int MaximumSaneSize = 6000;
+
 NemoThumbnailCache::NemoThumbnailCache(const QString &cachePath)
     : cachePath_(cachePath)
 #ifdef HAS_MLITE5
@@ -360,6 +362,12 @@ NemoThumbnailCache::NemoThumbnailCache(const QString &cachePath)
 {
     if (screenWidth_ > screenHeight_) {
         std::swap(screenWidth_, screenHeight_);
+    }
+
+    if (screenWidth_ > MaximumSaneSize || screenHeight_ > MaximumSaneSize) {
+        qWarning() << "Invalid screen dimensions, capping to" << MaximumSaneSize;
+        screenWidth_ = std::min(screenWidth_, MaximumSaneSize);
+        screenHeight_ = std::min(screenHeight_, MaximumSaneSize);
     }
 
     QDir directory(cachePath_);
