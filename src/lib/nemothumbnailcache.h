@@ -67,7 +67,8 @@ public:
 
         unsigned size() const;
 
-        QImage getScaledImage(const QSize &requestedSize, bool crop = false, Qt::TransformationMode mode = Qt::FastTransformation) const;
+        QImage getScaledImage(const QSize &requestedSize, bool crop = false,
+                              Qt::TransformationMode mode = Qt::FastTransformation) const;
 
     private:
         QString path_;
@@ -77,23 +78,26 @@ public:
 
     static NemoThumbnailCache *instance();
 
-    ThumbnailData requestThumbnail(const QString &path, const QSize &requestedSize, bool crop, bool unbounded = true, const QString &mimeType = QString());
+    ThumbnailData requestThumbnail(const QString &path, const QSize &requestedSize, bool crop,
+                                   bool unbounded = true, const QString &mimeType = QString());
 
-    ThumbnailData existingThumbnail(const QString &path, const QSize &requestedSize, bool crop, bool unbounded = true) const;
+    ThumbnailData existingThumbnail(const QString &path, const QSize &requestedSize,
+                                    bool crop, bool unbounded = true) const;
 
 protected:
     NemoThumbnailCache(const QString &cachePath);
     virtual ~NemoThumbnailCache();
 
-    virtual ThumbnailData generateThumbnail(const QString &path, const QByteArray &key, int size, bool crop, const QString &mimeType);
+    virtual ThumbnailData generateThumbnail(const QString &path, const QByteArray &key,
+                                            int size, bool crop, const QString &mimeType);
     QString writeCacheFile(const QByteArray &key, const QImage &image);
 
     static QImage readImageThumbnail(
-            QImageReader *reader, const QSize requestedSize, bool crop, Qt::TransformationMode mode);
+            QImageReader *reader, QSize requestedSize, bool crop, Qt::TransformationMode mode);
 
 private:
     inline NemoThumbnailCache::ThumbnailData generateImageThumbnail(
-            const QString &path, const QByteArray &key, const int requestedSize, bool crop);
+            const QString &path, const QByteArray &key, int requestedSize, bool crop);
 
     const QString cachePath_;
     unsigned screenWidth_;
