@@ -2,7 +2,7 @@ project         = Nemo QML Plugin Thumbnailer
 description     = Nemo QML Plugin Thumbnailer Reference Documentation
 versionsym      =
 version         = 2.0
-url             = https://git.merproject.org/mer-core/nemo-qml-plugin-thumbnailer
+url             = https://github.com/sailfishos/nemo-qml-plugin-thumbnailer
 
 sourcedirs += src ../src
 
