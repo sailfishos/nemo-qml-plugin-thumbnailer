@@ -71,7 +71,7 @@ unsigned selectUnboundedSize(const QSize &requestedSize, unsigned screenWidth, u
     // Prefer a thumbnail size at least as large as the requested size
     const unsigned candidates[] = { NemoThumbnailCache::Small, NemoThumbnailCache::Medium, NemoThumbnailCache::Large,
                                     NemoThumbnailCache::ExtraLarge, screenWidth};
-    for (unsigned i = 0; i < lengthOf(candidates); ++i) {
+    for (int i = 0; i < lengthOf(candidates); ++i) {
         if (acceptableUnboundedSize(requestedSize, crop, candidates[i])) {
             return candidates[i];
         }
@@ -95,7 +95,7 @@ unsigned selectBoundedSize(const QSize &requestedSize, unsigned screenWidth, uns
     // Select a size that does not exceed the requested size
     const unsigned candidates[] = { screenHeight, screenWidth, NemoThumbnailCache::ExtraLarge,
                                     NemoThumbnailCache::Large, NemoThumbnailCache::Medium };
-    for (unsigned i = 0; i < lengthOf(candidates); ++i) {
+    for (int i = 0; i < lengthOf(candidates); ++i) {
         if (acceptableBoundedSize(requestedSize, candidates[i])) {
             return candidates[i];
         }
@@ -118,7 +118,7 @@ unsigned increaseSize(unsigned size, unsigned screenWidth, unsigned screenHeight
 {
     const unsigned candidates[] = { NemoThumbnailCache::Small, NemoThumbnailCache::Medium, NemoThumbnailCache::Large,
                                     NemoThumbnailCache::ExtraLarge, screenWidth, screenHeight };
-    for (unsigned i = 0; i < lengthOf(candidates) - 1; ++i) {
+    for (int i = 0; i < lengthOf(candidates) - 1; ++i) {
         if (candidates[i] == size) {
             return candidates[i] + 1;
         }
@@ -130,7 +130,7 @@ unsigned decreaseSize(unsigned size, unsigned screenWidth, unsigned screenHeight
 {
     const unsigned candidates[] = { screenHeight, screenWidth, NemoThumbnailCache::ExtraLarge, NemoThumbnailCache::Large,
                                     NemoThumbnailCache::Medium, NemoThumbnailCache::Small };
-    for (unsigned i = 0; i < lengthOf(candidates) - 1; ++i) {
+    for (int i = 0; i < lengthOf(candidates) - 1; ++i) {
         if (candidates[i] == size) {
             return candidates[i] + 1;
         }
