@@ -42,7 +42,7 @@
 #include <QElapsedTimer>
 #include <QLoggingCategory>
 #ifdef HAS_MLITE5
-#include <MGConfItem>
+#include <MDConfItem>
 #endif
 #include <QStandardPaths>
 #include <QProcess>
@@ -353,8 +353,8 @@ static unsigned int MaximumSaneSize = 6000;
 NemoThumbnailCache::NemoThumbnailCache(const QString &cachePath)
     : cachePath_(cachePath)
 #ifdef HAS_MLITE5
-    , screenWidth_(MGConfItem(QStringLiteral("/lipstick/screen/primary/width")).value(540).toInt())
-    , screenHeight_(MGConfItem(QStringLiteral("/lipstick/screen/primary/height")).value(960).toInt())
+    , screenWidth_(MDConfItem(QStringLiteral("/lipstick/screen/primary/width")).value(540).toInt())
+    , screenHeight_(MDConfItem(QStringLiteral("/lipstick/screen/primary/height")).value(960).toInt())
 #else
     , screenWidth_(540)
     , screenHeight_(960)
